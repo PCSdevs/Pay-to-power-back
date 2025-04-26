@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model MigrationLock {
+  id       String  @id @unique @default(uuid())
+  isLocked Boolean
+  lockedBy String
+  uid      String
+  gid      String
+  env      String
+  os       String
+}
+
+model Migration {
+  id       String @id @unique @default(uuid())
+  username String
+  uid      String
+  gid      String
+  env      String
+  os       String
+  name     String
+}
+
+model User {
+  id                  String                @id @default(uuid())
+  email               String                @unique
+  firstName           String?
+  lastName            String?
+  fullName            String?
+  password            String?
+  profileImg          String?
+  lastLogin           DateTime?
+  isVerified          Boolean               @default(false)
+  isDeleted           Boolean               @default(false)
+  isActive            Boolean               @default(true)
+  isInvited           Boolean               @default(false)
+  isSuperAdminCreated   Boolean   @default(false)
+  createdBy           String?
+  updatedBy           String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  ForgotPasswordToken ForgotPasswordToken[]
+  AccessToken         AccessToken[]
+  invitedBy           Invitations[]         @relation("invitedBy")
+  invitedTo           Invitations[]         @relation("invitedTo")
+  VerifyUserToken     VerifyUserToken[]
+  UserCompanyRole                  UserCompanyRole[]
+}
+
+model ForgotPasswordToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AccessToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Role {
+  id              String       @id @default(uuid())
+  roleName        String       @unique
+  roleDescription String?
+  isSystem        Boolean      @default(false)
+  isAdmin         Boolean      @default(false)
+  status          Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  createdBy       String?
+  updatedBy       String?
+  UserCompanyRole        UserCompanyRole[]
+  Permission      Permission[]
+}
+
+model Permission {
+  id         String   @id @default(uuid())
+  moduleName String
+  all        Boolean  @default(false)
+  view       Boolean  @default(false)
+  edit       Boolean  @default(false)
+  delete     Boolean  @default(false)
+  add        Boolean  @default(false)
+  approval   Boolean  @default(false)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId     String
+  sortId     Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model VerifyUserToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model UserCompanyRole {
+  id          String        @id @default(uuid())
+  user        User?         @relation(fields: [userId], references: [id])
+  userId      String?
+  role        Role          @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId      String
+  company     Company?      @relation(fields: [companyId], references: [id])
+  companyId   String?
+  status      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  Invitations Invitations[]
+}
+
+model Invitations {
+  id                String           @id @default(uuid())
+  invitedByUserId   String
+  invitedBy         User             @relation("invitedBy", fields: [invitedByUserId], references: [id])
+  invitedToUserId   String
+  invitedTo         User             @relation("invitedTo", fields: [invitedToUserId], references: [id])
+  userCompanyRoleId String?
+  userCompanyRole   UserCompanyRole? @relation(fields: [userCompanyRoleId], references: [id])
+  invitationStatus  InvitationStatus
+  invitationToken   String
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model Company {
+  id                          String                        @id @default(uuid())
+  name                        String
+  address                     String?
+  email                       String?
+  isDeleted                   Boolean                       @default(false)
+  createdAt                   DateTime                      @default(now())
+  updatedAt                   DateTime                      @updatedAt
+  createdBy                   String?
+  updatedBy                   String?
+  UserCompanyRole             UserCompanyRole[]
+}
+enum InvitationStatus {
+  Pending
+  Accepted
+  Rejected
+}
