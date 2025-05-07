@@ -5,6 +5,7 @@ import authRoutes from "./authRoutes";
 import permissionRoutes from "./permissionRoutes";
 import roleRoutes from "./roleRoutes";
 import userRoutes from "./userRoutes";
+import companyRoutes from "./companyRoutes";
 
 const router = express.Router();
 
@@ -13,13 +14,14 @@ const router = express.Router();
 router.use('/api/auth', authRoutes);
 router.use('/api/user', userRoutes);
 router.use('/api/role', roleRoutes);
+router.use('/api/company', companyRoutes);
 router.use('/api/permission', permissionRoutes);
 
 router.use(
   "/health",
   asyncHandler(async () => {
     return {
-      message: "Hello from EMS BackEnd",
+      message: "Hello from Pay2Power BackEnd",
     };
   }),
 );

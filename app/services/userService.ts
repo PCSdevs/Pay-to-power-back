@@ -250,7 +250,7 @@ const verifyInvitationToken = async (req: RequestExtended) => {
 
 const getUsersService = async (req: RequestExtended) => {
 	const { page = 1, limit = 10, search, type, sort, filter } = req.query;
-	const { companyId, id } = req.user;
+	const { companyId, id,isSuperAdmin,isSuperAdminCreated } = req.user;
 
 	await companyRepository.validateCompany(companyId);
 	await userRepository.validateUser(id);
@@ -263,9 +263,10 @@ const getUsersService = async (req: RequestExtended) => {
 	});
 	const offset = (Number(page) - 1) * Number(limit);
 
-	const filterConditions: Record<string, any> = filter
-		? { status: filter == 'true' ? true : false }
-		: {};
+	const filterConditions: Record<string, any> = {
+		...(filter !== undefined && { status: filter === 'true' }),
+		...((!isSuperAdmin || !isSuperAdminCreated) && { isSuperAdminCreate: false }),
+	  };
 
 	// Conditions for search
 	const searchCondition = search

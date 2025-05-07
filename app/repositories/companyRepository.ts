@@ -126,6 +126,19 @@ const isCompanyAdmin = async (userId: string, companyId: string) => {
 	return !!userCompanyRole;
 };
 
+const getCompanyByIdForSetup = async (userId: string, companyId: string) => {
+
+	const company = await prisma.company.findMany({
+		where: {
+			id: companyId,
+			isDeleted: false,
+		}
+	});
+
+	return company;
+
+	//	return company;
+};
 
 export const companyRepository = {
 	getCompanyById,
@@ -136,4 +149,5 @@ export const companyRepository = {
 	updateCompany,
 	getAllCompaniesWithFilterAndSort,
 	deleteCompany,
+	getCompanyByIdForSetup
 };

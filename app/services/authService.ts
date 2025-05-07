@@ -20,6 +20,7 @@ import { disablePermissions, invalidText } from '../utils/utils';
 import { companyRepository } from '../repositories/companyRepository';
 import { DefaultAdminPermissions } from '../utils/data';
 import { userCompanyRoleRepository } from '../repositories/userCompanyRoleRepository';
+import { roleRepository } from '../repositories/roleRepository';
 
 const resetPasswordUrl = `${process.env.REACT_APP_BASE_URL}/reset-password`;
 const smtpEmail = process.env.SMTP_EMAIL;
@@ -390,6 +391,54 @@ const updateProfile = async (req: RequestExtended) => {
 	};
 };
 
+const changeCompany = async (req: RequestExtended) => {
+	const companyId = req.body.companyId;
+	const accessToken = await tokenRepository.getAccessTokenByUser(req.user.id);
+	let isSuperAdmin = false;
+
+	const userRole = await roleRepository.getRoleByCompany({
+		companyId: companyId,
+		userId: req.user.id,
+	});
+
+	if (!userRole) {
+		const isSuperUser = await roleRepository.getSuperUserByUserId(req.user.id);
+		if (isSuperUser) {
+			isSuperAdmin = true;
+		}
+	}
+
+	if (accessToken) {
+		await prisma.user.update({
+			where: {
+				id: req.user.id,
+			},
+			data: {
+				lastLogin: new Date(),
+			},
+		});
+		await tokenRepository.deleteAccessTokenByUser(req.user.id);
+		const newAccessToken = generateAccessToken({
+			id: req.user.id,
+			email: req.user.email,
+			companyId: companyId,
+			isAdmin: userRole?.isAdmin,
+			// permissions: isSuperAdmin
+			// 	? disablePermissions(DefaultAdminPermissions)
+			// 	: disablePermissions(userRole?.Permission),
+			isSuperAdmin: isSuperAdmin
+				? true
+				: userRole
+				? userRole?.isSuperAdmin
+				: false,
+		});
+		await tokenRepository.createAccessTokenByUser(req.user.id, newAccessToken);
+		return {
+			accessToken: newAccessToken,
+			message: 'Company changed successfully',
+		};
+	}
+};
 
 export const authService = {
 	loginService,
@@ -399,4 +448,5 @@ export const authService = {
 	fetchProfile,
 	updateProfile,
 	logoutService,
+	changeCompany
 };

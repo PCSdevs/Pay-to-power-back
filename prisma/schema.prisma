@@ -40,7 +40,7 @@ model User {
   isDeleted           Boolean               @default(false)
   isActive            Boolean               @default(true)
   isInvited           Boolean               @default(false)
-  isSuperAdminCreated   Boolean   @default(false)
+  isSuperAdminCreated Boolean               @default(false)
   createdBy           String?
   updatedBy           String?
   createdAt           DateTime              @default(now())
@@ -50,7 +50,7 @@ model User {
   invitedBy           Invitations[]         @relation("invitedBy")
   invitedTo           Invitations[]         @relation("invitedTo")
   VerifyUserToken     VerifyUserToken[]
-  UserCompanyRole                  UserCompanyRole[]
+  UserCompanyRole     UserCompanyRole[]
 }
 
 model ForgotPasswordToken {
@@ -72,20 +72,20 @@ model AccessToken {
 }
 
 model Role {
-  id              String       @id @default(uuid())
-  roleName        String       @unique
+  id              String            @id @default(uuid())
+  roleName        String
   roleDescription String?
-  isSystem        Boolean      @default(false)
-  isAdmin         Boolean      @default(false)
-  isSuperAdmin    Boolean      @default(false)
-  status          Boolean      @default(true)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  isSystem        Boolean           @default(false)
+  isAdmin         Boolean           @default(false)
+  isSuperAdmin    Boolean           @default(false)
+  status          Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
   createdBy       String?
-  companyId              String?
-  Company                Company?                 @relation(fields: [companyId], references: [id])
+  companyId       String?
+  Company         Company?          @relation(fields: [companyId], references: [id])
   updatedBy       String?
-  UserCompanyRole        UserCompanyRole[]
+  UserCompanyRole UserCompanyRole[]
   Permission      Permission[]
 }
 
@@ -143,18 +143,19 @@ model Invitations {
 }
 
 model Company {
-  id                          String                        @id @default(uuid())
-  name                        String
-  address                     String?
-  email                       String?
-  isDeleted                   Boolean                       @default(false)
-  createdAt                   DateTime                      @default(now())
-  updatedAt                   DateTime                      @updatedAt
-  createdBy                   String?
-  updatedBy                   String?
-  UserCompanyRole             UserCompanyRole[]
-  Role                        Role[]
+  id              String            @id @default(uuid())
+  name            String
+  address         String?
+  email           String?
+  isDeleted       Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  createdBy       String?
+  updatedBy       String?
+  UserCompanyRole UserCompanyRole[]
+  Role            Role[]
 }
+
 enum InvitationStatus {
   Pending
   Accepted
