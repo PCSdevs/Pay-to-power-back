@@ -1,11 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import os from 'os';
 import { setTimeout } from 'timers';
-// import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { DBChangeLog } from './resources/dbChangeLog';
-import { prisma } from './client/prisma';
 
-// const prisma = new PrismaClient();
+const prisma = new PrismaClient();
 
 interface UserInfo {
 	readonly username: string;

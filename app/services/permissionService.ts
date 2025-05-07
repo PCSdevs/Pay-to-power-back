@@ -7,10 +7,10 @@ import { ErrorCodes } from '../utils/response';
 
 const updatePermissionService = async (req: RequestExtended) => {
 	const { permissions, roleId } = req.body;
-	const { id } = req.user;
+	const { id:loggedinUserId,companyId } = req.user;
 
 	//Check permisssion
-	await checkPermission(id, {
+	await checkPermission(loggedinUserId,companyId, {
 		moduleName: 'Roles',
 		permission: ['edit'],
 	});
@@ -34,10 +34,10 @@ const updatePermissionService = async (req: RequestExtended) => {
 
 const getPermissionsByRoleIdService = async (req: RequestExtended) => {
 	const { id } = req.params;
-	const { id: userId } = req.user
+	const { id:loggedinUserId,companyId } = req.user;
 
 	//Check permisssion
-	await checkPermission(userId, {
+	await checkPermission(loggedinUserId,companyId, {
 		moduleName: 'Roles',
 		permission: ['view'],
 	});

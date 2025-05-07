@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from '../client/prisma';
 import ApiException from '../utils/errorHandler';
 import { ErrorCodes } from '../utils/response';
+import { roleRepository } from './roleRepository';
 
 const getActiveUserById = async (id: string) => {
 	const user = await prisma.user.findFirst({
@@ -10,19 +10,28 @@ const getActiveUserById = async (id: string) => {
 			isDeleted: false,
 			isActive: true,
 			isVerified: true,
-		},
-		include: {
-			role: {
-				include: {
-					Permission: true,
+			UserCompanyRole: {
+				some: {
+					status: true,
 				},
 			},
 		},
-
+		include: {
+			UserCompanyRole: {
+				include: {
+					company: true,
+					role: {
+						include: {
+							Permission: true,
+						},
+					},
+					Invitations: true,
+				},
+			},
+		},
 	});
 	return user;
 };
-
 
 const getUserByEmail = async (email: string) => {
 	const user = await prisma.user.findFirst({
@@ -31,14 +40,18 @@ const getUserByEmail = async (email: string) => {
 			isDeleted: false,
 		},
 		include: {
-			role: {
+			UserCompanyRole: {
 				include: {
-					Permission: true,
+					company: true,
+					role: {
+						include: {
+							Permission: true,
+						},
+					},
+					Invitations: true,
 				},
 			},
-			invitedBy: true,
 		},
-
 	});
 	return user;
 };
@@ -60,24 +73,91 @@ const createUser = async (data: any) => {
 	return user;
 };
 
+const getSuperUser = async () => {
+	const superUserRole = await roleRepository.getSuperAdminRole();
+
+	if (superUserRole) {
+		const companyRole = await prisma.userCompanyRole.findFirst({
+			where: {
+				roleId: superUserRole.id,
+			},
+		});
+		return companyRole?.userId;
+	}
+
+	return null;
+};
 
 const validateUser = async (userId: string) => {
 	const user = await getActiveUserById(userId);
 	if (!user) {
 		throw new ApiException(ErrorCodes.INVALID_USER_ID);
 	}
-	return user
 };
 
-const getUserById = async (id: string) => {
-	const user = await prisma.user.findFirst({
+const getUsersByCompanyId = async (
+	companyId: string,
+	offset?: number,
+	limit?: number,
+	filterConditions?: any,
+	searchCondition?: any,
+	sortCondition?: any
+) => {
+	const users = await prisma.userCompanyRole.findMany({
 		where: {
-			id,
-			isDeleted: false,
-		}
+			...filterConditions,
+			user: { ...searchCondition },
+			// status: true,
+			companyId: companyId,
+			NOT: {
+				userId: null,
+			},
+		},
+		orderBy: {
+			user: {
+				...sortCondition.orderBy,
+			},
+		},
+		include: {
+			role: {
+				select: {
+					id: true,
+					roleName: true,
+					isAdmin: true,
+				},
+			},
+			user: {
+				select: {
+					id: true,
+					email: true,
+					fullName: true,
+					isVerified: true,
+					isActive: true,
+				},
+			},
+			Invitations: {
+				select: {
+					invitationStatus: true,
+				},
+			},
+		},
+		skip: offset,
+		take: limit,
 	});
-	return user;
+
+	const total = await prisma.userCompanyRole.count({
+		where: {
+			user: { ...searchCondition },
+			companyId: companyId,
+			NOT: {
+				userId: null,
+			},
+		},
+	});
+
+	return { users, total };
 };
+
 
 const checkUserById = async (id: string) => {
 	const user = await prisma.user.findFirst({
@@ -95,121 +175,74 @@ const getAllUserByEmail = async (email: string) => {
 			email: email,
 		},
 		include: {
-			role: {
+			UserCompanyRole: {
 				include: {
-					Permission: true,
+					company: true,
+					role: {
+						include: {
+							Permission: true,
+						},
+					},
+					Invitations: true,
 				},
 			},
-			invitedTo: true,
 		},
 	});
 	return user;
 };
 
-const verifyUser = async (email: string,) => {
-	const user = await prisma.user.update({
+const validateUserInCompany = async (userId: string, companyId: string) => {
+	const user = await prisma.userCompanyRole.findFirst({
 		where: {
-			email: email
+			userId: userId,
+			companyId: companyId,
+			status: true,
 		},
-		data: {
-			isVerified: true
-		}
 	});
-	return user;
+	if (!user) {
+		throw new ApiException(ErrorCodes.INVALID_USER_ID);
+	}
 };
 
-const getUsers = async (
-	offset?: number,
-	limit?: number,
-	searchCondition?: any,
-	sortCondition?: any
-) => {
+const getUsersInRole = async (data: { companyId: string; roles: any[] }) => {
 	const users = await prisma.user.findMany({
 		where: {
-			...searchCondition,
-			isDeleted: false
-		},
-		orderBy: {
-			...sortCondition.orderBy,
-		},
-		include: {
-			role: {
-				select: {
-					id: true,
-					roleName: true,
-					isAdmin: true,
-				},
-			},
-			invitedTo: {
-				select: {
-					invitationStatus: true,
+			UserCompanyRole: {
+				every: {
+					roleId: {
+						in: Array.from(data.roles),
+					},
+					companyId: data.companyId,
 				},
 			},
 		},
-		skip: offset,
-		take: limit,
 	});
-
-	const total = await prisma.user.count({
-		where: { 
-			...searchCondition,
-			isDeleted: false
-		}
-
-	});
-
-	return { users, total };
-};
-const deleteUser = async (userId: string) => {
-	const user = await prisma.user.update({
-		where: {
-			id: userId,
-		},
-		data: {
-			isActive: false,
-			isVerified: false,
-			isDeleted: true,
-			password: null,
-			roleId: null
-		}
-
-	});
-	return user;
+	return users;
 };
 
-const getUserRoleStatusById = async (id: string) => {
+const getUserById = async (id: string) => {
 	const user = await prisma.user.findFirst({
 		where: {
 			id,
 			isDeleted: false,
-			isActive: true,
+			// isActive: true,
 			isVerified: true,
-		},
-		select: {
-			role: {
-				select: {
-					status: true,
-				},
-			},
-		},
+		}
 	});
-
-	return user?.role?.status ?? null;
+	return user;
 };
-
-
 
 export const userRepository = {
 	getActiveUserById,
 	getUserByEmail,
 	updateUser,
 	createUser,
+	getSuperUser,
 	validateUser,
-	getUserById,
+	getUsersByCompanyId,
 	getAllUserByEmail,
 	checkUserById,
-	verifyUser,
-	getUsers,
-	deleteUser,
-	getUserRoleStatusById
+	validateUserInCompany,
+	getUsersInRole,
+	getUserById
 };

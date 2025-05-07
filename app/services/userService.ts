@@ -1,97 +1,204 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-mixed-spaces-and-tabs */
-import sendEmail from '../helpers/emailHelper';
+import ApiException from '../utils/errorHandler';
+import { ErrorCodes } from '../utils/response';
+import { userRepository } from '../repositories/userRepository';
+import { roleRepository } from '../repositories/roleRepository';
+import { userCompanyRoleRepository } from '../repositories/userCompanyRoleRepository';
+import { companyRepository } from '../repositories/companyRepository';
 import {
 	generateVerificationToken,
 	verifyVerificationToken,
 } from '../helpers/tokenHelper';
+import sendEmail from '../helpers/emailHelper';
 import { RequestExtended } from '../interfaces/global';
-import { checkPermission } from '../middlewares/isAuthorizedUser';
-import { invitationsRepository } from '../repositories/invitationsRepository';
-import { roleRepository } from '../repositories/roleRepository';
-import { userRepository } from '../repositories/userRepository';
 import { verifyUserTokenRepository } from '../repositories/verifyUserTokenRepository';
-import { getInvitationEmailUserExistTemplate } from '../template/email/invitationEmailTemplate';
-import ApiException from '../utils/errorHandler';
-import { ErrorCodes } from '../utils/response';
+import { invitationsRepository } from '../repositories/invitationsRepository';
 import { invalidText } from '../utils/utils';
+import { tokenRepository } from '../repositories/tokenRepository';
+import { checkPermission } from '../middlewares/isAuthorizedUser';
+import { getInvitationEmailUserExistTemplate } from '../template/email/invitationEmailTemplate';
 
 const inviteUserService = async (req: RequestExtended) => {
 	const { email, role, fullName } = req.body;
 
-	const { id } = req.user;
+	const { companyId, id,isSuperAdmin } = req.user;
 
+	await companyRepository.validateCompany(companyId);
 
 	const _email = email.toLowerCase();
 
 	//check permission
 
-	await checkPermission(id, {
+	await checkPermission(id, companyId, {
 		moduleName: 'Users',
 		permission: ['add'],
 	});
 	const user = await userRepository.getAllUserByEmail(_email);
 
-	if (user) {
-		throw new ApiException(ErrorCodes.SAME_EMAIL);
-	}
-
 	// Check if role exists
-	const isRoleExist = await roleRepository.getRoleById(role);
+	const isRoleExist = await roleRepository.getRole(role, companyId);
 	if (!isRoleExist) {
 		throw new ApiException(ErrorCodes.INVALID_ROLE_ID);
 	}
 
-	const createdUser = await userRepository.createUser({
-		email: _email,
-		firstName: fullName ? fullName.split(' ')[0] : '',
-		lastName: fullName ? fullName.split(' ')[1] : '',
-		fullName: fullName,
-		isVerified: false,
-		isActive:false,
-		createdBy: req.user.id,
-		roleId: role
-	});
+	if (user?.UserCompanyRole.length && !user.isDeleted) {
+		const userExist =
+			await userCompanyRoleRepository.getActiveUserByIdAndCompanyId(
+				user?.id,
+				companyId
+			);
 
-	const inviteToken = await generateVerificationToken({
-		email: _email,
-		role: role,
-	});
+		if (userExist) {
+			throw new ApiException(ErrorCodes.USER_ALREADY_EXISTS);
+		}
 
-	//add invite token to db
-	await verifyUserTokenRepository.addVerificationToken(
-		inviteToken,
-		createdUser.id
-	);
+		const company = await companyRepository.getCompanyById(companyId);
 
-	//check once again while run 
+		const userCompanyRoleWithNullUserId =
+			await userCompanyRoleRepository.getUserByRoleIdAndCompanyId(
+				isRoleExist.id,
+				companyId
+			);
 
-	await invitationsRepository.addInvitationToUser(
-		req?.user?.id,
-		createdUser.id,
-		'Pending',
-		inviteToken
-	);
+		let addedUser;
+		if (
+			// isRoleExist?.isAdmin &&
+			!userCompanyRoleWithNullUserId?.userId &&
+			userCompanyRoleWithNullUserId
+		) {
+			addedUser = await userCompanyRoleRepository.updateUserId(
+				user.id,
+				userCompanyRoleWithNullUserId?.id
+			);
+		} else {
+			addedUser = await userCompanyRoleRepository.addUser(
+				user.id,
+				companyId,
+				isRoleExist.id
+			);
+		}
 
-	const url = `${process.env.REACT_APP_BASE_URL}/set-password?token=${inviteToken}&first=true?ispresent=false`;
+		const inviteToken = generateVerificationToken({
+			email: _email,
+			role: role,
+			company: company?.id,
+		});
 
-	// Change Email Templete
-	const emailContent = getInvitationEmailUserExistTemplate({
-		email,
-		url: url,
-	});
+		//add invite token to db
+		await verifyUserTokenRepository.addVerificationToken(inviteToken, user.id);
 
-	const mailOptions = {
-		from: process.env.SMTP_EMAIL,
-		to: email,
-		subject: 'Invitation to join WageWorks',
-		html: emailContent,
-	};
+		await invitationsRepository.addInvitationToUser(
+			req?.user?.id,
+			user.id,
+			addedUser.id,
+			'Pending',
+			inviteToken
+		);
 
-	await userRepository.updateUser(createdUser.id, { isInvited: true });
+		const url = `${process.env.REACT_APP_BASE_URL}/set-password?token=${inviteToken}&first=true&ispresent=true`;
 
-	await sendEmail(mailOptions);
+		// Change Email Templete
+		const emailContent = getInvitationEmailUserExistTemplate({
+			email,
+			companyName: company?.name,
+			url: url,
+		});
 
+		const mailOptions = {
+			from: process.env.SMTP_EMAIL,
+			to: email,
+			subject: 'Invitation to join WageWorks',
+			html: emailContent,
+		};
+
+		await sendEmail(mailOptions);
+	} else {
+		let createdUser;
+		if (!user) {
+			createdUser = await userRepository.createUser({
+				email: _email,
+				firstName: fullName ? fullName.split(' ')[0] : '',
+				lastName: fullName ? fullName.split(' ')[1] : '',
+				fullName: fullName,
+				isVerified: false,
+				createdBy: req.user.id,
+				isSuperAdminCreated: isSuperAdmin ? true : false
+			});
+		} else {
+			await userRepository.updateUser(user.id, {
+				isDeleted: false,
+				firstName: fullName ? fullName.split(' ')[0] : '',
+				lastName: fullName ? fullName.split(' ')[1] : '',
+				fullName: fullName,
+				isSuperAdminCreated: isSuperAdmin ? true : false
+			});
+			createdUser = user;
+		}
+		const company = await companyRepository.getCompanyById(companyId);
+		const userCompanyRoleWithNullUserId =
+			await userCompanyRoleRepository.getUserByRoleIdAndCompanyId(
+				isRoleExist.id,
+				companyId
+			);
+
+		let addedUser;
+		if (
+			// isRoleExist?.isAdmin &&
+			!userCompanyRoleWithNullUserId?.userId &&
+			userCompanyRoleWithNullUserId
+		) {
+			addedUser = await userCompanyRoleRepository.updateUserId(
+				createdUser.id,
+				userCompanyRoleWithNullUserId?.id
+			);
+		} else {
+			addedUser = await userCompanyRoleRepository.addUser(
+				createdUser.id,
+				companyId,
+				isRoleExist.id
+			);
+		}
+
+		const inviteToken = await generateVerificationToken({
+			email: _email,
+			role: role,
+			company: company?.id,
+		});
+
+		//add invite token to db
+		await verifyUserTokenRepository.addVerificationToken(
+			inviteToken,
+			createdUser.id
+		);
+
+		await invitationsRepository.addInvitationToUser(
+			req?.user?.id,
+			createdUser.id,
+			addedUser.id,
+			'Pending',
+			inviteToken
+		);
+
+		const url = `${process.env.REACT_APP_BASE_URL}/set-password?token=${inviteToken}&first=true?ispresent=false`;
+
+		// Change Email Templete
+		const emailContent = getInvitationEmailUserExistTemplate({
+			email,
+			companyName: company?.name,
+			url: url,
+		});
+
+		const mailOptions = {
+			from: process.env.SMTP_EMAIL,
+			to: email,
+			subject: 'Invitation to join WageWorks',
+			html: emailContent,
+		};
+
+		await userRepository.updateUser(createdUser.id, { isInvited: true });
+
+		await sendEmail(mailOptions);
+	}
 
 	return {
 		message: 'Invite user successful',
@@ -99,9 +206,7 @@ const inviteUserService = async (req: RequestExtended) => {
 };
 
 const verifyInvitationToken = async (req: RequestExtended) => {
-	const { token,
-		//  ispresent
-	} = req.query;
+	const { token, ispresent } = req.query;
 
 	if (!token) {
 		throw new ApiException(ErrorCodes.INVALID_TOKEN);
@@ -127,20 +232,17 @@ const verifyInvitationToken = async (req: RequestExtended) => {
 		throw new ApiException(ErrorCodes.INVALID_TOKEN);
 	}
 
-	// if (ispresent) {
-	// 	await invitationsRepository.updateInvitedUserStatusById(
-	// 		verificationToken.id
-	// 	);
-	// 	// await userCompanyRoleRepository.updateUserCompanyRoleData(
-	// 	// 	verified.id,
-	// 	// 	verified.companyId,
-	// 	// 	{ status: true }
-	// 	// );
-
-	// 	await userRepository.verifyUser(verified.id)
-
-	// 	await tokenRepository.deleteVerifyTokenByUser(user?.id);
-	// }
+	if (ispresent) {
+		await invitationsRepository.updateInvitedUserStatusById(
+			verificationToken.id
+		);
+		await userCompanyRoleRepository.updateUserCompanyRoleData(
+			verified.id,
+			verified.companyId,
+			{ status: true }
+		);
+		await tokenRepository.deleteVerifyTokenByUser(user?.id);
+	}
 	// Accept in invitation also verify and active user
 
 	return true;
@@ -148,23 +250,26 @@ const verifyInvitationToken = async (req: RequestExtended) => {
 
 const getUsersService = async (req: RequestExtended) => {
 	const { page = 1, limit = 10, search, type, sort, filter } = req.query;
-	const { id } = req.user;
+	const { companyId, id } = req.user;
 
+	await companyRepository.validateCompany(companyId);
 	await userRepository.validateUser(id);
 
 	//check permission
 
-	await checkPermission(id, {
+	await checkPermission(id, companyId, {
 		moduleName: 'Users',
 		permission: ['view'],
 	});
 	const offset = (Number(page) - 1) * Number(limit);
 
+	const filterConditions: Record<string, any> = filter
+		? { status: filter == 'true' ? true : false }
+		: {};
+
 	// Conditions for search
-	const searchCondition = {
-		...(filter ? { isActive: filter === 'true' } : {}),
-		...(search
-			? {
+	const searchCondition = search
+		? {
 				OR: [
 					{
 						firstName: {
@@ -204,37 +309,39 @@ const getUsersService = async (req: RequestExtended) => {
 						],
 					},
 				],
-			}
-			: {}),
-	};
+		  }
+		: {};
 
 	// Conditions for sort
 	const sortCondition = sort
 		? {
-			orderBy: {
-				[sort as string]: type ?? 'asc',
-			},
-		}
+				orderBy: {
+					[sort as string]: type ?? 'asc',
+				},
+		  }
 		: {};
 
-	const { users, total } = await userRepository.getUsers(
+	const { users, total } = await userRepository.getUsersByCompanyId(
+		companyId,
 		offset,
 		Number(limit),
+		filterConditions,
 		searchCondition,
 		sortCondition
 	);
 
-	const _users = users.map((user: any) => {
+	const _users = users.map((user) => {
 		return {
-			userId: user.id,
-			name: user?.fullName,
-			email: user?.email,
-			status: user.isActive,
-			roleId: user.role?.id,
-			roleName: user.role?.roleName,
-			isAdmin: user.role?.isAdmin,
-			invitationStatus: user.invitedTo[0]?.invitationStatus ?? "Accepted",
-			isVerified: user?.isVerified,
+			userCompanyRoleId: user.id,
+			name: user.user?.fullName,
+			email: user.user?.email,
+			status: user.status,
+			roleId: user.role.id,
+			roleName: user.role.roleName,
+			userId: user.userId,
+			isAdmin: user.role.isAdmin,
+			invitationStatus: user.Invitations[0].invitationStatus,
+			isVerified: user.user?.isVerified,
 		};
 	});
 
@@ -245,31 +352,40 @@ const getUsersService = async (req: RequestExtended) => {
 	};
 };
 
-const deleteUserService = async (deleteUserId: string, user: any) => {
-	const { id } = user;
-	await checkPermission(id, {
+const deleteUserService = async (userCompanyRoleId: string, user: any) => {
+	const { companyId, id, isSuperAdmin } = user;
+	await checkPermission(id, companyId, {
 		moduleName: 'Users',
 		permission: ['delete'],
 	});
-
-	const userData = await userRepository.getUserById(
-		deleteUserId
+	// const userCompanyRoleDetail =
+	const userData = await userCompanyRoleRepository.getActiveUserById(
+		userCompanyRoleId
 	);
-
-	if (userData?.id === id) {
+	if (userData.userId === id) {
 		throw new ApiException(ErrorCodes.MISSING_PERMISSION);
 	}
-	
-	const userToDeleteRole = await roleRepository.getRoleById(
-		userData?.roleId as string
+	const userToDeleteRoleInCompany = await roleRepository.getRoleById(
+		userData?.roleId
 	);
 
-	if (userToDeleteRole?.isAdmin) {
+	if (userToDeleteRoleInCompany?.isAdmin && !isSuperAdmin) {
 		throw new ApiException(ErrorCodes.CANNOT_DELETE_ADMIN);
 	}
-	await userRepository.deleteUser(deleteUserId);
-
-
+	await userCompanyRoleRepository.deleteUser(userCompanyRoleId);
+	if (userData.userId) {
+		const isUserPresentInotherCompany =
+			await userCompanyRoleRepository.getUserCompanyRoleDataByUserId(
+				userData.userId
+			);
+		if (!isUserPresentInotherCompany.length) {
+			await userRepository.updateUser(userData.userId, {
+				isDeleted: true,
+				password: null,
+				isVerified: false,
+			});
+		}
+	}
 	return {
 		message: 'Successfully deleted user.',
 	};
@@ -282,12 +398,14 @@ const updateUserService = async (data: {
 	fullName: string;
 }) => {
 	const { user, updateUserId, roleId, fullName } = data;
-	await checkPermission(user.id, {
+
+	await checkPermission(user.id, user.companyId, {
 		moduleName: 'Users',
 		permission: ['edit'],
 	});
 
 	const _user = await userRepository.getUserById(updateUserId);
+
 	if (_user) {
 		await userRepository.updateUser(_user.id, {
 			fullName: fullName,
@@ -296,12 +414,16 @@ const updateUserService = async (data: {
 		});
 
 		if (!invalidText(roleId)) {
-			const role = await roleRepository.getRoleById(roleId)
+			const companyRole = await userCompanyRoleRepository.getCompanyRole(
+				updateUserId,
+				user.companyId
+			);
 
-			if (role) {
-				await userRepository.updateUser(
+			if (companyRole) {
+				await userCompanyRoleRepository.updateUserCompanyRole(
 					updateUserId,
-					{ roleId }
+					user.companyId,
+					roleId
 				);
 			}
 		}
@@ -315,25 +437,21 @@ const updateUserService = async (data: {
 const userStatusUpdateService = async (data: {
 	user: any;
 	status: boolean;
-	updateUserId: string;
+	updateUserCompanyRoleId: string;
 }) => {
-	const { status, user, updateUserId } = data;
-	
-	if (user?.id === updateUserId) {
-		throw new ApiException(ErrorCodes.MISSING_PERMISSION);
-	}
+	const { status, updateUserCompanyRoleId, user } = data;
 
-	await checkPermission(user.id, {
+	await checkPermission(user.id, user.companyId, {
 		moduleName: 'Users',
 		permission: ['edit'],
 	});
-	await userRepository.validateUser(
-		user.id
+	await userCompanyRoleRepository.validateUserCompanyRoleById(
+		updateUserCompanyRoleId
 	);
 
-	await userRepository.updateUser(
-		updateUserId,
-		{ isActive: status }
+	await userCompanyRoleRepository.updateUserCompanyRoleById(
+		updateUserCompanyRoleId,
+		{ status: status }
 	);
 
 	return {
@@ -342,23 +460,29 @@ const userStatusUpdateService = async (data: {
 };
 
 const reInviteUserService = async (data: any) => {
-	const { user, reInviteUserId } = data;
-	const { id } = user;
+	const { user, userCompanyRoleId } = data;
+	const { companyId, id } = user;
 
-
-	await checkPermission(id, {
+	const validUser = await userCompanyRoleRepository.validateUserCompanyRoleById(
+		userCompanyRoleId
+	);
+	await companyRepository.validateCompany(companyId);
+	await checkPermission(id, companyId, {
 		moduleName: 'Users',
 		permission: ['add'],
 	});
+	if (!validUser.userId) {
+		throw new ApiException(ErrorCodes.INVALID_USER_ID);
+	}
 
-	const _user = await userRepository.checkUserById(reInviteUserId);
+	const _user = await userRepository.checkUserById(validUser.userId);
 	if (!_user) {
 		throw new ApiException(ErrorCodes.USER_NOT_FOUND);
 	}
 
 	const tokenDetails =
-		await invitationsRepository.getInvitationTokenDetailsByUserId(
-			reInviteUserId
+		await invitationsRepository.getInvitationTokenDetailsByUserCompanyRoleId(
+			userCompanyRoleId
 		);
 	if (tokenDetails?.invitationStatus !== 'Pending') {
 		throw new ApiException(ErrorCodes.INVITATION_ALREADY_ACCEPTED);
@@ -366,26 +490,34 @@ const reInviteUserService = async (data: any) => {
 
 	const inviteToken = await generateVerificationToken({
 		email: _user?.email,
-		role: _user.roleId,
+		role: validUser.roleId,
+		company: companyId,
 	});
+	const company = await companyRepository.getCompanyById(companyId);
 	await invitationsRepository.updateInvitationTokenById(
 		tokenDetails.id,
 		inviteToken
 	);
 
+	// const userIncompany=await userCompanyRoleRepository.getUserCompanyRoleDataByUserId(_user.id)
 
-	const url = `${process.env.REACT_APP_BASE_URL}/set-password?token=${inviteToken}&first=true`
+	// const hasTrueStatus = userIncompany?.some(obj => obj.status === true);
+
+	const url = _user.isVerified
+		? `${process.env.REACT_APP_BASE_URL}/set-password?token=${inviteToken}&first=true&ispresent=true`
+		: `${process.env.REACT_APP_BASE_URL}/set-password?token=${inviteToken}&first=true?ispresent=false`;
 
 	// Change Email Templete
 	const emailContent = getInvitationEmailUserExistTemplate({
 		email: _user.email,
+		companyName: company?.name,
 		url: url,
 	});
 
 	const mailOptions = {
 		from: process.env.SMTP_EMAIL,
 		to: _user.email,
-		subject: 'Invitation to join Med-Panel',
+		subject: 'Invitation to join WageWorks',
 		html: emailContent,
 	};
 

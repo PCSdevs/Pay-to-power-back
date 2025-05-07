@@ -1,18 +1,47 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from '../client/prisma';
 import { DefaultAdminPermissions, DefaultPermissions } from '../utils/data';
 import ApiException from '../utils/errorHandler';
 import { ErrorCodes } from '../utils/response';
 
+const getSuperAdminRole = async () => {
+	const role = await prisma.role.findFirst({
+		where: {
+			isSuperAdmin: true,
+		},
+	});
+	return role;
+};
 
-const getRoleToDeleteById = async (roleId: string) => {
+const getSuperUserByUserId = async (userId: string) => {
+	const role = await prisma.role.findFirst({
+		where: {
+			isSuperAdmin: true,
+		},
+	});
+
+	if (role) {
+		const companyRole = await prisma.userCompanyRole.findFirst({
+			where: {
+				roleId: role.id,
+				userId: userId,
+			},
+			include: {
+				user: true,
+				role: true,
+				company: true,
+			},
+		});
+		return companyRole;
+	}
+	return null;
+};
+
+const getRole = async (roleId: string, companyId: string) => {
 	const role = await prisma.role.findFirst({
 		where: {
 			id: roleId,
+			companyId: companyId,
 		},
-		include: {
-			users:true
-		}
 	});
 	return role;
 };
@@ -26,17 +55,17 @@ const getRoleById = async (id: string) => {
 	return role;
 };
 
-const validateRole = async (roleId: string) => {
-	const role = await getRoleById(roleId);
+const validateRole = async (companyId: string) => {
+	const role = await getRoleById(companyId);
 	if (!role) {
 		throw new ApiException(ErrorCodes.INVALID_ROLE_ID);
 	}
-	return role
 };
 
-const getAdminRole = async () => {
+const getAdminRole = async (companyId: string) => {
 	const role = await prisma.role.findFirst({
 		where: {
+			companyId: companyId,
 			isAdmin: true,
 			roleName: 'Admin',
 		},
@@ -44,15 +73,24 @@ const getAdminRole = async () => {
 	return role;
 };
 
-const getRoles = async () => {
-	const roles = await prisma.role.findMany();
+const getRoleByCompanyId = async (id: string) => {
+	const roles = await prisma.role.findMany({
+		where: {
+			companyId: id,
+		},
+	});
 
-	const total = await prisma.role.count();
+	const total = await prisma.role.count({
+		where: {
+			companyId: id,
+		},
+	});
 
 	return { roles, total };
 };
 
 const isSameRoleName = async (
+	companyId: string,
 	roleName: string,
 	roleId = ''
 ) => {
@@ -64,7 +102,14 @@ const isSameRoleName = async (
 			roleName: {
 				mode: 'insensitive',
 				equals: roleName,
-			}
+			},
+			UserCompanyRole: {
+				some: {
+					company: {
+						id: companyId,
+					},
+				},
+			},
 		},
 	});
 
@@ -79,6 +124,7 @@ const createRole = async (
 	roleName: string,
 	roleDescription: string,
 	isAdmin: boolean = false,
+	companyId: string,
 	userId: string,
 	isSystem?: boolean
 ) => {
@@ -88,6 +134,8 @@ const createRole = async (
 			roleDescription,
 			isAdmin,
 			isSystem,
+			isSuperAdmin: false,
+			companyId: companyId,
 			createdBy: userId,
 			Permission: {
 				createMany: {
@@ -100,179 +148,88 @@ const createRole = async (
 	return role;
 };
 
-// const checkCompanyAndRole = async (roleId: string, companyId: string) => {
-// 	const isValid = await prisma.company.findFirst({
-// 		where: {
-// 			id: companyId,
-// 			Role: {
-// 				some: {
-// 					id: roleId,
-// 				},
-// 			},
-// 		},
-// 	});
-
-// 	return isValid;
-// };
-
-// const getRoleByCompany = async (data: {
-// 	userId: string;
-// 	companyId: string;
-// }) => {
-// 	const companyRole = await prisma.userCompanyRole.findFirst({
-// 		where: {
-// 			companyId: data.companyId,
-// 			userId: data.userId,
-// 		},
-// 		include: {
-// 			role: {
-// 				include: {
-// 					Permission: true,
-// 				},
-// 			},
-// 		},
-// 	});
-// 	return companyRole ? companyRole.role : null;
-// };
-
-// const getAllSupervisors = async (companyId: string) => {
-// 	const role = await prisma.role.findFirst({
-// 		where: {
-// 			companyId: companyId,
-// 			isAdmin: false,
-// 			roleName: 'Supervisor',
-// 		},
-// 	});
-
-// 	const supervisors = await prisma.userCompanyRole.findMany({
-// 		where: {
-// 			roleId: role?.id,
-// 			companyId: companyId,
-// 		},
-// 		include: {
-// 			user: true,
-// 		},
-// 	});
-
-// 	return supervisors;
-// };
-
-// const getRoleInCompany = async (companyId: string, userId: string) => {
-// 	const role = await prisma.userCompanyRole.findFirst({
-// 		where: {
-// 			companyId: companyId,
-// 			userId: userId,
-// 		},
-// 		include: {
-// 			role: true,
-// 		},
-// 	});
-// 	return role;
-// };
-
-const deleteRoleById = async (roleId: string) => {
-	const role = await prisma.role.delete({
+const checkCompanyAndRole = async (roleId: string, companyId: string) => {
+	const isValid = await prisma.company.findFirst({
 		where: {
-			id: roleId,
-		},
-	});
-	return role;
-};
-
-const updateRoleById = async (
-	roleName: string,
-	roleDescription: string,
-	isAdmin: boolean = false,
-	userId: string,
-	roleId: string,
-	isSystem?: boolean,
-) => {
-	const role = await prisma.role.update({
-		where: {
-			id : roleId
-		},
-		data: {
-			roleName,
-			roleDescription,
-			isAdmin,
-			isSystem,
-			updatedBy: userId,
-			Permission: {
-				createMany: {
-					data: isAdmin ? DefaultAdminPermissions : DefaultPermissions,
+			id: companyId,
+			Role: {
+				some: {
+					id: roleId,
 				},
 			},
 		},
 	});
 
-	return role;
+	return isValid;
 };
 
-const getRolePermissionById = async (roleId: string) => {
-	const role = await prisma.role.findFirst({
+const getRoleByCompany = async (data: {
+	userId: string;
+	companyId: string;
+}) => {
+	const companyRole = await prisma.userCompanyRole.findFirst({
 		where: {
-			id: roleId,
+			companyId: data.companyId,
+			userId: data.userId,
 		},
 		include: {
-			Permission: true,
-		},
-	});
-	return role;
-}
-
-const createCloneRole = async (
-	roleName: string,
-	roleDescription: string,
-	isAdmin: boolean = false,
-	userId: string,
-	cloneRolePermissions: any,
-	isSystem?: boolean,
-) => {
-	const role = await prisma.role.create({
-		data: {
-			roleName,
-			roleDescription,
-			isAdmin,
-			isSystem,
-			createdBy: userId,
-			Permission: {
-				createMany: {
-					data: cloneRolePermissions,
+			role: {
+				include: {
+					Permission: true,
 				},
 			},
 		},
 	});
-	return role;
+	return companyRole ? companyRole.role : null;
 };
 
-const updateRoleStatusById = async (roleId: string, status: boolean, userId: string) => {
-	const role = await prisma.role.update({
+const getAllSupervisors = async (companyId: string) => {
+	const role = await prisma.role.findFirst({
 		where: {
-			id: roleId,
+			companyId: companyId,
+			isAdmin: false,
+			roleName: 'Supervisor',
 		},
-		data: {
-			status: status,
-			updatedBy: userId
+	});
+
+	const supervisors = await prisma.userCompanyRole.findMany({
+		where: {
+			roleId: role?.id,
+			companyId: companyId,
+		},
+		include: {
+			user: true,
+		},
+	});
+
+	return supervisors;
+};
+
+const getRoleInCompany = async (companyId: string, userId: string) => {
+	const role = await prisma.userCompanyRole.findFirst({
+		where: {
+			companyId: companyId,
+			userId: userId,
+		},
+		include: {
+			role: true,
 		},
 	});
 	return role;
 };
 
 export const roleRepository = {
+	getSuperAdminRole,
 	getRoleById,
 	getAdminRole,
-	getRoles,
+	getRoleByCompanyId,
 	isSameRoleName,
 	createRole,
-	// checkCompanyAndRole,
+	checkCompanyAndRole,
 	validateRole,
-	getRoleToDeleteById,
-	// getRoleByCompany,
-	// getAllSupervisors,
-	// getRoleInCompany,
-	deleteRoleById,
-	updateRoleById,
-	getRolePermissionById,
-	createCloneRole,
-	updateRoleStatusById
+	getRole,
+	getRoleByCompany,
+	getSuperUserByUserId,
+	getAllSupervisors,
+	getRoleInCompany,
 };

@@ -16,7 +16,10 @@ import { userRepository } from '../repositories/userRepository';
 import { getForgotPasswordTemplate } from '../template/email/forgotPasswordTemplate';
 import ApiException from '../utils/errorHandler';
 import { ErrorCodes } from '../utils/response';
-import { invalidText } from '../utils/utils';
+import { disablePermissions, invalidText } from '../utils/utils';
+import { companyRepository } from '../repositories/companyRepository';
+import { DefaultAdminPermissions } from '../utils/data';
+import { userCompanyRoleRepository } from '../repositories/userCompanyRoleRepository';
 
 const resetPasswordUrl = `${process.env.REACT_APP_BASE_URL}/reset-password`;
 const smtpEmail = process.env.SMTP_EMAIL;
@@ -31,10 +34,6 @@ const loginService = async (req: Request) => {
 
 	if (!user.isVerified) {
 		throw new ApiException(ErrorCodes.USER_NOT_VERIFIED);
-	}
-
-	if (user?.role?.status !== true) {
-		throw new ApiException(ErrorCodes.UNAUTHORIZED);
 	}
 
 	const isPasswordValid = await comparePassword(
@@ -57,8 +56,33 @@ const loginService = async (req: Request) => {
 		},
 	});
 
+	let companies: any = [];
+	// let permissions: any = [];
+	let isSuperAdmin = false;
+	let isAdmin=false;
 
-	if (!user.isActive) {
+	if (user.UserCompanyRole.length > 0) {
+		const companyRole = user.UserCompanyRole.find(
+			(companyRole) => companyRole.companyId === null
+		);
+
+		if (companyRole) {
+			companies = await companyRepository.getAllCompanies();
+			isSuperAdmin = companyRole.role.isSuperAdmin;
+			isAdmin=companyRole.role.isAdmin;
+		} else {
+			companies = [user.UserCompanyRole[0].company];
+			// permissions = user.UserCompanyRole[0].role.Permission;
+			isSuperAdmin = user.UserCompanyRole[0].role.isSuperAdmin;
+			isAdmin=user.UserCompanyRole[0].role.isAdmin;
+		}
+	}
+
+	const isValidForLogin = user.UserCompanyRole.some(
+		(user) => user.status == true
+	);
+
+	if (!isValidForLogin) {
 		throw new ApiException(ErrorCodes.NOT_ACTIVE);
 	}
 
@@ -66,8 +90,11 @@ const loginService = async (req: Request) => {
 		await tokenRepository.deleteAccessTokenByUser(user.id);
 		const newAccessToken = generateAccessToken({
 			id: user.id,
+			isSuperAdminCreated:user?.isSuperAdminCreated,
 			email,
-			isAdmin: user?.role?.isAdmin,
+			companyId: companies.length > 0 ? companies[0].id : null,
+			isSuperAdmin,
+			isAdmin,
 		});
 		await tokenRepository.createAccessTokenByUser(user.id, newAccessToken);
 
@@ -80,7 +107,9 @@ const loginService = async (req: Request) => {
 		const newAccessToken = generateAccessToken({
 			id: user.id,
 			email,
-			isAdmin: user?.role?.isAdmin,
+			companyId: companies.length > 0 ? companies[0].id : null,
+			isSuperAdmin,
+			isAdmin,
 		});
 		await tokenRepository.createAccessTokenByUser(user.id, newAccessToken);
 		return {
@@ -194,8 +223,6 @@ const changePassword = async (req: Request) => {
 	let verified: any;
 
 	if (token)
-
-		
 		if (setPassword) {
 			const tokenExist = await invitationsRepository.checkInvitationToken(
 				token as string
@@ -209,19 +236,27 @@ const changePassword = async (req: Request) => {
 				throw new ApiException(ErrorCodes.INVALID_TOKEN);
 			}
 			await invitationsRepository.updateInvitedUserStatusById(tokenExist?.id);
-
-			await userRepository.verifyUser(verified?.email)
-
-		} else {
-			const tokenExist = await tokenRepository.checkForgetPasswordToken(
-				token as string
+			await userCompanyRoleRepository.updateUserCompanyRoleData(
+				verified.id,
+				verified.companyId,
+				{ status: true }
 			);
-			if (!tokenExist) { 
+
+			// const tokenExist = await tokenRepository.getVerifyTokenByUser(
+			// 	verified.id
+			// );
+			// if (!tokenExist) {
+			// 	throw new ApiException(ErrorCodes.INVALID_TOKEN);
+			// }
+		} else {
+			verified = await verifyForgotPasswordToken(token);
+			if (!verified) {
 				throw new ApiException(ErrorCodes.INVALID_TOKEN);
 			}
-			verified = await verifyForgotPasswordToken(token);
-
-			if (!verified) {
+			const tokenExist = await tokenRepository.getForgotPasswordTokenByUser(
+				verified.id
+			);
+			if (!tokenExist) {
 				throw new ApiException(ErrorCodes.INVALID_TOKEN);
 			}
 		}
@@ -262,7 +297,7 @@ const changePassword = async (req: Request) => {
 	});
 
 	return {
-		message: `Password ${setPassword ? 'set' : 'updated'} successfully. Please login to continue.`,
+		message: `Password ${setPassword ? 'set' :'updated'} successfully. Please login to continue.`,
 	};
 };
 
@@ -274,15 +309,46 @@ const fetchProfile = async (req: RequestExtended) => {
 		throw new ApiException(ErrorCodes.USER_NOT_FOUND);
 	}
 
+	let companies: any = [];
+	let permissions = [];
+
+	if (user.UserCompanyRole.length > 0) {
+		const companyRole = user.UserCompanyRole.find(
+			(companyRole) => companyRole.companyId === null
+		);
+
+		if (companyRole) {
+			companies = await companyRepository.getAllCompanies();
+			permissions = DefaultAdminPermissions;
+		} else {
+			companies = user.UserCompanyRole.map((item: any) => {
+				return {
+					id: item.companyId,
+					name: item.company?.name,
+					roleId: item.roleId,
+					roleName : item?.role?.roleName,
+					permissions: item.role.Permission,
+				};
+			});
+
+			const companyRole = companies.find(
+				(company: any) => company.id === req.user.companyId
+			);
+
+			permissions = companyRole.permissions;
+		}
+	}
+
+	const _permissions = disablePermissions(permissions);
 	const data = {
 		id: user.id,
 		email: user.email,
 		firstName: user.firstName,
 		lastName: user.lastName,
 		image: user.profileImg,
-		roleId : user.roleId,
-		roleName: user?.role?.roleName,
-		permissions: user.role?.Permission,
+		companies: companies,
+		 roleName : user.UserCompanyRole[0].role.roleName,
+		permissions: _permissions,
 	};
 
 	return {

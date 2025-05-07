@@ -1,22 +1,23 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from '../client/prisma';
 import { userRepository } from '../repositories/userRepository';
 import ApiException from '../utils/errorHandler';
 import { ErrorCodes } from '../utils/response';
+// Assuming you have the necessary imports and setup for Prisma and Express
 
 export const checkPermission = async (
 	userId: string,
+	companyId: string,
 	requiredPermission: any
 ) => {
 	const _user = await userRepository.getActiveUserById(userId);
 
-	if (_user?.role?.isAdmin) {
+		if (_user?.UserCompanyRole[0].role.isSuperAdmin) {
 		return;
 	}
-	
-	const userPermissions: any = await prisma.user.findFirst({
+	const userPermissions: any = await prisma.userCompanyRole.findFirst({
 		where: {
-			id: userId,
+			userId: userId,
+			companyId,
 		},
 		include: {
 			role: {
@@ -26,7 +27,11 @@ export const checkPermission = async (
 			},
 		},
 	});
-
+	
+	if (userPermissions.role.isSuperAdmin) {
+		return;
+	}
+	
 	const permissionsList = userPermissions.role.Permission;
 	const permission = permissionsList.find(
 		(singlePermission: any) =>

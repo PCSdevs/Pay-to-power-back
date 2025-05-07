@@ -1,53 +1,55 @@
 import { Role, User } from '@prisma/client';
 import { prisma } from '../../client/prisma';
 import { hashPassword } from '../../helpers/passwordHelper';
-import { DefaultAdminPermissions } from '../../utils/data';
 
 export async function up() {
 	let role: Role | null = null;
 	let user: User | null = null;
 
-	role = await prisma.role.findFirst({
+	const adminRole = await prisma.role.findFirst({
 		where: {
-			roleName: 'Admin',
-			isAdmin: true,
+			roleName: 'SUPER_ADMIN',
+			isSuperAdmin: true,
 		},
 	});
 
-	if (!role) {
+	if (!adminRole) {
 		role = await prisma.role.create({
 			data: {
-				roleName: 'Admin',
-				isAdmin: true,
-				Permission: {
-					createMany: {
-						data:DefaultAdminPermissions ,
-					},
-				},
+				roleName: 'SUPER_ADMIN',
+				isSuperAdmin: true,
 			},
 		});
 	}
 
 	const adminUser = await prisma.user.findFirst({
 		where: {
-			email: process.env.ADMIN_EMAIL || 'pratikp@serviots.com',
+			email: process.env.ADMIN_EMAIL || 'pp757439@gmail.com',
 		},
 	});
 
 	if (!adminUser) {
 		user = await prisma.user.create({
 			data: {
-				email: process.env.ADMIN_EMAIL || "pratikp@serviots.com",
-				password: await hashPassword("Admin@123"),
+				email: process.env.ADMIN_EMAIL || 'pp757439@gmail.com',
 				isVerified: true,
 				isActive: true,
-				isDeleted: false,
-				roleId: role?.id
-
-			}
+				isSuperAdminCreated:true,
+				password: await hashPassword(
+					process.env.ADMIN_PASSWORD || 'SuperAdmin1213#'
+				),
+			},
 		});
 	}
 
+	if (user && role) {
+		await prisma.userCompanyRole.create({
+			data: {
+				userId: user.id,
+				roleId: role.id,
+			},
+		});
+	}
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

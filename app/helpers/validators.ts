@@ -100,3 +100,25 @@ export const cloneRoleValidationRules = [
 	body('roleDescription').notEmpty().withMessage('Role Description is required'),
 	body('cloneRoleId').notEmpty().withMessage('Clone role id is required'),
 ];
+
+//Company create validation rules
+// export const createCompanyValidationRules = [
+// 	body('name').trim().notEmpty().withMessage('name is required'),
+// 	body('tpin').trim().notEmpty().withMessage('tpin is required'),
+// 	body('email')
+// 		.optional({ checkFalsy: true })
+// 		.isEmail()
+// 		.withMessage('Invalid email address'),
+// ];
+
+// //Update create validation rules
+// export const updateCompanyValidationRules = [
+// 	body('companyId').notEmpty().withMessage('company id is required'),
+// 	body('name').trim().notEmpty().withMessage('name is required'),
+// 	body('tpin').trim().notEmpty().withMessage('tpin is required'),
+// 	body('email').isEmail().withMessage('Invalid email address'),
+// ];
+
+// export const deleteCompanyValidationRules = [
+// 	body('companyId').notEmpty().withMessage('companyId is required'),
+// ];

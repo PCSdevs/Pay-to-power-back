@@ -11,10 +11,20 @@ export const ErrorCodes = {
     code: 1001,
     message: "Internal server error in uploading file.",
   },
+  COMPANY_ALREADY_EXISTS: {
+    status: 400,
+    code: 1005,
+    message: 'Company already exists.',
+  },
   UNAUTHORIZED: {
     status: 401,
     code: 1100,
     message: "Unauthorized.",
+  },
+  INVALID_COMPANY_ID: {
+    status: 400,
+    code: 1005,
+    message: 'Invalid company id.',
   },
   NOT_ACTIVE: {
     status: 401,
@@ -60,6 +70,11 @@ export const ErrorCodes = {
     status: 401,
     code: 1202,
     message: "Invalid credentials.",
+  },
+  INVALID_USER_COMPANY_ROLE_ID: {
+    status: 400,
+    code: 1008,
+    message: 'Invalid user company role id.',
   },
   MISSING_DEVICE_ID: {
     status: 400,

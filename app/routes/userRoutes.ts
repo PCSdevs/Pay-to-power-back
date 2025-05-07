@@ -80,8 +80,8 @@ router.put(
 	asyncHandler(async (req: RequestExtended) => {
 		const data = {
 			user: req.user,
+			updateUserCompanyRoleId: req.body.updateUserCompanyRoleId,
 			status: req.body.status,
-			updateUserId: req.body.updateUserId
 		};
 
 		return userService.userStatusUpdateService(data);

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextFunction, Response } from 'express';
 import { RequestExtended } from '../interfaces/global';
 import ApiException from '../utils/errorHandler';
@@ -6,7 +5,6 @@ import { ErrorCodes } from '../utils/response';
 import { verifyAccessToken } from '../helpers/tokenHelper';
 import { logger } from '../utils/logger';
 import { invalidText } from '../utils/utils';
-import { userRepository } from '../repositories/userRepository';
 
 // function handleUnauthorized(req: RequestExtended, res: Response) {
 // 	const err = ErrorCodes.UNAUTHORIZED;
@@ -33,23 +31,28 @@ export const isAuthenticated = async (
 
 		const token = authHeader.split(' ')[1];
 
+		// const isExist = await prisma.accessToken.findFirst({
+		// 	where: {
+		// 		token,
+		// 	},
+		// });
+
+		// if (!isExist) {
+		// 	throw new ApiException(ErrorCodes.UNAUTHORIZED);
+		// }
+
 		const payload: any = verifyAccessToken(token);
 
 		if (!payload) {
 			throw new ApiException(ErrorCodes.UNAUTHORIZED);
 		}
 
-		const _user = await userRepository.getUserRoleStatusById(payload.id);
-		
-		if (_user !== true) {
-			throw new ApiException(ErrorCodes.UNAUTHORIZED);
-		}
-
 		req.user = {
 			id: payload.id,
 			email: payload.email,
-			// companyId: payload.companyId,
-			// isSuperAdmin: payload.isSuperAdmin,
+			companyId: payload.companyId,
+			isSuperAdmin: payload.isSuperAdmin,
+			isSuperAdminCreated:payload.isSuperAdminCreated
 		};
 
 		next();
