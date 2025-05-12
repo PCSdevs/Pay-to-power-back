@@ -73,16 +73,22 @@ const getAdminRole = async (companyId: string) => {
 	return role;
 };
 
-const getRoleByCompanyId = async (id: string) => {
+const getRoleByCompanyId = async (id: string, needSuperAdminCreated?: boolean) => {
 	const roles = await prisma.role.findMany({
 		where: {
 			companyId: id,
+			...(needSuperAdminCreated ? {} : {
+				isSuperAdminCreated: false
+			})
 		},
 	});
 
 	const total = await prisma.role.count({
 		where: {
 			companyId: id,
+			...(needSuperAdminCreated ? {} : {
+				isSuperAdminCreated: false
+			})
 		},
 	});
 
@@ -126,7 +132,8 @@ const createRole = async (
 	isAdmin: boolean = false,
 	companyId: string,
 	userId: string,
-	isSystem?: boolean
+	isSuperAdminCreated: boolean,
+	isSystem?: boolean,
 ) => {
 	const role = await prisma.role.create({
 		data: {
@@ -134,6 +141,7 @@ const createRole = async (
 			roleDescription,
 			isAdmin,
 			isSystem,
+			isSuperAdminCreated,
 			isSuperAdmin: false,
 			companyId: companyId,
 			createdBy: userId,

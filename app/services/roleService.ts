@@ -8,7 +8,7 @@ import { checkPermission } from '../middlewares/isAuthorizedUser';
 
 const createRoleService = async (req: RequestExtended) => {
 	const { roleName, roleDescription, isAdmin } = req.body;
-	const { companyId, id } = req.user;
+	const { companyId, id, isSuperAdmin, isSuperAdminCreated } = req.user;
 
 	await companyRepository.validateCompany(companyId);
 
@@ -30,7 +30,9 @@ const createRoleService = async (req: RequestExtended) => {
 			roleDescription,
 			isAdmin,
 			companyId,
-			id
+			id,
+			(isSuperAdminCreated || isSuperAdmin) ? true : false
+
 		);
 		await userCompanyRoleRepository.combineRoleCompany(companyId, role.id);
 		const data = {
@@ -48,7 +50,7 @@ const createRoleService = async (req: RequestExtended) => {
 };
 
 const getRoleService = async (req: RequestExtended) => {
-	const { id, companyId } = req.user;
+	const { id, companyId, isSuperAdmin, isSuperAdminCreated } = req.user;
 
 	await checkPermission(id, companyId, {
 		moduleName: 'Roles',
@@ -57,7 +59,7 @@ const getRoleService = async (req: RequestExtended) => {
 
 	await companyRepository.validateCompany(companyId);
 
-	const { roles, total } = await roleRepository.getRoleByCompanyId(companyId);
+	const { roles, total } = await roleRepository.getRoleByCompanyId(companyId, (isSuperAdminCreated || isSuperAdmin) ? true : false);
 
 	const data = roles?.map(
 		({ id, roleName, roleDescription, status, companyId, isAdmin }) => ({
@@ -108,11 +110,11 @@ const isAdmin = async (
 };
 
 const getRoleOptionService = async (req: RequestExtended) => {
-	const { companyId } = req.user;
+	const { companyId, isSuperAdmin, isSuperAdminCreated  } = req.user;
 
 	await companyRepository.validateCompany(companyId);
 
-	const { roles, total } = await roleRepository.getRoleByCompanyId(companyId);
+	const { roles, total } = await roleRepository.getRoleByCompanyId(companyId,(isSuperAdminCreated || isSuperAdmin) ? true : false);
 
 	const data = roles
 		?.filter(

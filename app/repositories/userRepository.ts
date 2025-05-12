@@ -103,10 +103,12 @@ const getUsersByCompanyId = async (
 	searchCondition?: any,
 	sortCondition?: any
 ) => {
+
+	const { user:filterUSercondition= {},...restFilterCondition}= filterConditions
 	const users = await prisma.userCompanyRole.findMany({
 		where: {
-			...filterConditions,
-			user: { ...searchCondition },
+			...restFilterCondition,
+			user: { ...searchCondition,...filterUSercondition },
 			// status: true,
 			companyId: companyId,
 			NOT: {
@@ -133,6 +135,7 @@ const getUsersByCompanyId = async (
 					fullName: true,
 					isVerified: true,
 					isActive: true,
+					isSuperAdminCreated:true
 				},
 			},
 			Invitations: {
@@ -147,7 +150,7 @@ const getUsersByCompanyId = async (
 
 	const total = await prisma.userCompanyRole.count({
 		where: {
-			user: { ...searchCondition },
+			user: { ...searchCondition,...filterUSercondition },
 			companyId: companyId,
 			NOT: {
 				userId: null,

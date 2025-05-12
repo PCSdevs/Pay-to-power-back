@@ -72,21 +72,22 @@ model AccessToken {
 }
 
 model Role {
-  id              String            @id @default(uuid())
-  roleName        String
-  roleDescription String?
-  isSystem        Boolean           @default(false)
-  isAdmin         Boolean           @default(false)
-  isSuperAdmin    Boolean           @default(false)
-  status          Boolean           @default(true)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  createdBy       String?
-  companyId       String?
-  Company         Company?          @relation(fields: [companyId], references: [id])
-  updatedBy       String?
-  UserCompanyRole UserCompanyRole[]
-  Permission      Permission[]
+  id                  String            @id @default(uuid())
+  roleName            String
+  roleDescription     String?
+  isSystem            Boolean           @default(false)
+  isAdmin             Boolean           @default(false)
+  isSuperAdmin        Boolean           @default(false)
+  isSuperAdminCreated Boolean           @default(false)
+  status              Boolean           @default(true)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  createdBy           String?
+  companyId           String?
+  Company             Company?          @relation(fields: [companyId], references: [id])
+  updatedBy           String?
+  UserCompanyRole     UserCompanyRole[]
+  Permission          Permission[]
 }
 
 model Permission {

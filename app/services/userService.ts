@@ -21,7 +21,7 @@ import { getInvitationEmailUserExistTemplate } from '../template/email/invitatio
 const inviteUserService = async (req: RequestExtended) => {
 	const { email, role, fullName } = req.body;
 
-	const { companyId, id,isSuperAdmin } = req.user;
+	const { companyId, id,isSuperAdmin,isSuperAdminCreated } = req.user;
 
 	await companyRepository.validateCompany(companyId);
 
@@ -122,7 +122,7 @@ const inviteUserService = async (req: RequestExtended) => {
 				fullName: fullName,
 				isVerified: false,
 				createdBy: req.user.id,
-				isSuperAdminCreated: isSuperAdmin ? true : false
+				isSuperAdminCreated: isSuperAdmin || isSuperAdminCreated ? true : false
 			});
 		} else {
 			await userRepository.updateUser(user.id, {
@@ -130,7 +130,7 @@ const inviteUserService = async (req: RequestExtended) => {
 				firstName: fullName ? fullName.split(' ')[0] : '',
 				lastName: fullName ? fullName.split(' ')[1] : '',
 				fullName: fullName,
-				isSuperAdminCreated: isSuperAdmin ? true : false
+				isSuperAdminCreated: isSuperAdmin || isSuperAdminCreated ? true : false
 			});
 			createdUser = user;
 		}
@@ -265,7 +265,7 @@ const getUsersService = async (req: RequestExtended) => {
 
 	const filterConditions: Record<string, any> = {
 		...(filter !== undefined && { status: filter === 'true' }),
-		...((!isSuperAdmin || !isSuperAdminCreated) && { isSuperAdminCreate: false }),
+		...((!isSuperAdmin || !isSuperAdminCreated) && { user :{isSuperAdminCreated: false }}),
 	  };
 
 	// Conditions for search
@@ -341,7 +341,8 @@ const getUsersService = async (req: RequestExtended) => {
 			roleName: user.role.roleName,
 			userId: user.userId,
 			isAdmin: user.role.isAdmin,
-			invitationStatus: user.Invitations[0].invitationStatus,
+			isSuperAdminCreated:user?.user?.isSuperAdminCreated,
+			invitationStatus: user.Invitations[0]?.invitationStatus,
 			isVerified: user.user?.isVerified,
 		};
 	});
