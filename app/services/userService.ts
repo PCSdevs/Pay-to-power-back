@@ -107,7 +107,7 @@ const inviteUserService = async (req: RequestExtended) => {
 		const mailOptions = {
 			from: process.env.SMTP_EMAIL,
 			to: email,
-			subject: 'Invitation to join WageWorks',
+			subject: 'Invitation to join Pay2Power',
 			html: emailContent,
 		};
 
@@ -191,7 +191,7 @@ const inviteUserService = async (req: RequestExtended) => {
 		const mailOptions = {
 			from: process.env.SMTP_EMAIL,
 			to: email,
-			subject: 'Invitation to join WageWorks',
+			subject: 'Invitation to join Pay2Power',
 			html: emailContent,
 		};
 
@@ -243,7 +243,12 @@ const verifyInvitationToken = async (req: RequestExtended) => {
 		);
 		await tokenRepository.deleteVerifyTokenByUser(user?.id);
 	}
-	// Accept in invitation also verify and active user
+	// // Accept in invitation also verify and active user
+	// await invitationsRepository.updateInvitedUserStatusById(
+	// 	verificationToken.id
+	// );
+
+	// await userRepository.updateUser(user?.id,{isVerified:true})
 
 	return true;
 };
@@ -519,7 +524,7 @@ const reInviteUserService = async (data: any) => {
 	const mailOptions = {
 		from: process.env.SMTP_EMAIL,
 		to: _user.email,
-		subject: 'Invitation to join WageWorks',
+		subject: 'Invitation to join Pay2Power',
 		html: emailContent,
 	};
 

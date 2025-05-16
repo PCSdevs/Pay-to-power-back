@@ -73,9 +73,9 @@ export const inviteUserValidationRules = [
 		.withMessage('Invalid role id'),
 ];
 export const reInviteUserValidationRules = [
-	body('reInviteUserId')
+	body('userCompanyRoleId')
 		.notEmpty()
-		.withMessage('reInviteUserId id is required'),
+		.withMessage('userCompanyRoleId id is required'),
 ];
 
 export const createRoleValidationRules = [

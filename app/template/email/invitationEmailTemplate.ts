@@ -739,7 +739,7 @@ export const getInvitationEmailUserExistTemplate = (data: any) => {
                                 </tbody>
                             </table>
                             <h2 class="o_heading o_text-dark o_mb-xxs">Your Invitation Awaits!</h2>
-                            <p>We're excited to invite you to join us at <strong><em>${companyName}</em></strong> on the WageWorks platform. Access exclusive opportunities and insights through our portal.</p>
+                            <p>We're excited to invite you to join us at <strong><em>${companyName}</em></strong> on the Pay2Power platform. Access exclusive opportunities and insights through our portal.</p>
                         </div>
                     </td>
                 </tr>

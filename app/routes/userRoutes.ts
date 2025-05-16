@@ -24,10 +24,10 @@ router.post(
 	'/reinvite-user',
 	isAuthenticated,
 	reInviteUserValidationRules,
-	asyncHandler(async (req: RequestExtended) => {
-		const { user } = req
-		const { reInviteUserId } = req.body
-		const data = { user: user, reInviteUserId: reInviteUserId }
+	asyncHandler(async (req:RequestExtended) => {
+		const {user}=req
+		const {userCompanyRoleId}=req.body
+		const data={user:user,userCompanyRoleId:userCompanyRoleId}
 		return userService.reInviteUserService(data);
 	})
 );

@@ -167,7 +167,7 @@ const forgotPassword = async (req: Request) => {
 	const mailOptions = {
 		from: smtpEmail,
 		to: email,
-		subject: 'Reset Password - Med-Panel',
+		subject: 'Reset Password - Pay2Power',
 		html: emailContent,
 	};
 
