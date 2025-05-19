@@ -229,7 +229,7 @@ const getUserById = async (id: string) => {
 			id,
 			isDeleted: false,
 			// isActive: true,
-			isVerified: true,
+			// isVerified: true,
 		}
 	});
 	return user;

@@ -98,7 +98,7 @@ const getRoleByCompanyId = async (id: string, needSuperAdminCreated?: boolean) =
 const isSameRoleName = async (
 	companyId: string,
 	roleName: string,
-	roleId = ''
+	roleId: string = ''
 ) => {
 	const isExistingRole = await prisma.role.findFirst({
 		where: {
@@ -226,6 +226,26 @@ const getRoleInCompany = async (companyId: string, userId: string) => {
 	return role;
 };
 
+const updateRole = async (
+	roleName: string,
+	roleDescription: string,
+	companyId: string,
+	roleId:string
+) => {
+	const role = await prisma.role.update({
+		where:{
+			id:roleId,
+			companyId:companyId
+		},
+		data: {
+			roleName,
+			roleDescription
+		},
+	});
+
+	return role;
+};
+
 export const roleRepository = {
 	getSuperAdminRole,
 	getRoleById,
@@ -240,4 +260,5 @@ export const roleRepository = {
 	getSuperUserByUserId,
 	getAllSupervisors,
 	getRoleInCompany,
+	updateRole
 };

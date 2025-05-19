@@ -109,6 +109,46 @@ const isAdmin = async (
 	return false;
 };
 
+const updateRoleService = async (req: RequestExtended) => {
+	const { roleName, roleDescription,roleId } = req.body;
+	const { companyId, id, isSuperAdmin, isSuperAdminCreated } = req.user;
+
+	await companyRepository.validateCompany(companyId);
+
+	//Check permission
+	await checkPermission(id, companyId, {
+		moduleName: 'Roles',
+		permission: ['edit'],
+	});
+
+	const isRoleNameExists = await roleRepository.isSameRoleName(
+		companyId,
+		roleName,
+		roleId
+	);
+	if (isRoleNameExists) {
+		throw new ApiException(ErrorCodes.ROLE_ALREADY_EXISTS);
+	} else {
+		const role = await roleRepository.updateRole(
+			roleName,
+			roleDescription,
+			companyId,
+			roleId
+		);
+		const data = {
+			id: role.id,
+			roleName: role.roleName,
+			roleDescription: role.roleDescription,
+			status: role.status,
+			companyId: role.companyId,
+		};
+		return {
+			data,
+			message: 'successfully updated role.',
+		};
+	}
+};
+
 const getRoleOptionService = async (req: RequestExtended) => {
 	const { companyId, isSuperAdmin, isSuperAdminCreated  } = req.user;
 
@@ -144,4 +184,5 @@ export const roleService = {
 	checkIfUserIsAdmin,
 	isAdmin,
 	getRoleOptionService,
+	updateRoleService
 };

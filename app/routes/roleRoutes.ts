@@ -1,7 +1,7 @@
 import express from 'express';
 import asyncHandler from '../utils/async-handler';
 import { isAuthenticated } from '../middlewares/authMiddleware';
-import { createRoleValidationRules } from '../helpers/validators';
+import { createRoleValidationRules, updateRoleValidationRules } from '../helpers/validators';
 import { roleService } from '../services/roleService';
 
 const router = express.Router();
@@ -28,6 +28,15 @@ router.get(
 	isAuthenticated,
 	asyncHandler(async (req) => {
 		return roleService.getRoleService(req);
+	})
+);
+
+router.put(
+	'/',
+	isAuthenticated,
+	updateRoleValidationRules,
+	asyncHandler(async (req) => {
+		return roleService.updateRoleService(req);
 	})
 );
 

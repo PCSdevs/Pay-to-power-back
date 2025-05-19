@@ -91,7 +91,7 @@ export const deleteRoleByIdValidationRules = [
 
 export const updateRoleValidationRules = [
 	body('roleName').notEmpty().withMessage('roleName is required'),
-	body('roleDescription').notEmpty().withMessage('Role Description is required'),
+	body('roleDescription').optional().notEmpty().withMessage('Role Description is required'),
 	body('roleId').notEmpty().withMessage('Role id is required'),
 ];
 

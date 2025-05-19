@@ -269,7 +269,8 @@ const getUsersService = async (req: RequestExtended) => {
 	const offset = (Number(page) - 1) * Number(limit);
 
 	const filterConditions: Record<string, any> = {
-		...(filter !== undefined && { status: filter === 'true' }),
+		// ...(filter !== undefined && { status: filter === 'true' }),
+		...(filter === 'true' || filter === 'false' ? { status: filter === 'true' } : {}),
 		...((!isSuperAdmin || !isSuperAdminCreated) && { user :{isSuperAdminCreated: false }}),
 	  };
 
