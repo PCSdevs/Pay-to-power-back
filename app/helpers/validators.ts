@@ -73,9 +73,9 @@ export const inviteUserValidationRules = [
 		.withMessage('Invalid role id'),
 ];
 export const reInviteUserValidationRules = [
-	body('userCompanyRoleId')
+	body('reInviteUserId')
 		.notEmpty()
-		.withMessage('userCompanyRoleId id is required'),
+		.withMessage('reInviteUserId id is required'),
 ];
 
 export const createRoleValidationRules = [
@@ -91,7 +91,7 @@ export const deleteRoleByIdValidationRules = [
 
 export const updateRoleValidationRules = [
 	body('roleName').notEmpty().withMessage('roleName is required'),
-	body('roleDescription').notEmpty().withMessage('Role Description is required'),
+	body('roleDescription').optional().notEmpty().withMessage('Role Description is required'),
 	body('roleId').notEmpty().withMessage('Role id is required'),
 ];
 
@@ -104,21 +104,33 @@ export const cloneRoleValidationRules = [
 //Company create validation rules
 export const createCompanyValidationRules = [
 	body('name').trim().notEmpty().withMessage('name is required'),
-	body('tpin').trim().notEmpty().withMessage('tpin is required'),
 	body('email')
-		.optional({ checkFalsy: true })
 		.isEmail()
+		.trim().notEmpty()
 		.withMessage('Invalid email address'),
+		body('address').trim().notEmpty().withMessage('address is required'),
 ];
 
 //Update create validation rules
 export const updateCompanyValidationRules = [
 	body('companyId').notEmpty().withMessage('company id is required'),
 	body('name').trim().notEmpty().withMessage('name is required'),
-	body('tpin').trim().notEmpty().withMessage('tpin is required'),
 	body('email').isEmail().withMessage('Invalid email address'),
 ];
 
 export const deleteCompanyValidationRules = [
 	body('companyId').notEmpty().withMessage('companyId is required'),
+];
+
+export const deleteRoleValidationRules = [
+	body('roleId').notEmpty().withMessage('Role id is required'),
+];
+
+export const roleStatusUpdateValidationRules = [
+	body('roleId')
+		.notEmpty().withMessage('Role id is required')
+		.isUUID().withMessage('Role id must be a valid UUID'),
+	body('status')
+		.isBoolean().withMessage('Status must be a boolean')
+		.not().isEmpty().withMessage('Status is required'),
 ];

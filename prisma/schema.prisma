@@ -40,7 +40,6 @@ model User {
   isDeleted           Boolean               @default(false)
   isActive            Boolean               @default(true)
   isInvited           Boolean               @default(false)
-  isSuperAdminCreated Boolean               @default(false)
   createdBy           String?
   updatedBy           String?
   createdAt           DateTime              @default(now())
@@ -51,6 +50,8 @@ model User {
   invitedTo           Invitations[]         @relation("invitedTo")
   VerifyUserToken     VerifyUserToken[]
   UserCompanyRole     UserCompanyRole[]
+
+  @@index([email])
 }
 
 model ForgotPasswordToken {
@@ -98,7 +99,6 @@ model Permission {
   edit       Boolean  @default(false)
   delete     Boolean  @default(false)
   add        Boolean  @default(false)
-  approval   Boolean  @default(false)
   role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
   roleId     String
   sortId     Float
@@ -116,32 +116,33 @@ model VerifyUserToken {
 }
 
 model UserCompanyRole {
-  id          String        @id @default(uuid())
-  user        User?         @relation(fields: [userId], references: [id])
-  userId      String?
-  role        Role          @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  roleId      String
-  company     Company?      @relation(fields: [companyId], references: [id])
-  companyId   String?
-  status      Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  Invitations Invitations[]
+  id                  String        @id @default(uuid())
+  user                User?         @relation(fields: [userId], references: [id])
+  userId              String?
+  role                Role          @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId              String
+  company             Company?      @relation(fields: [companyId], references: [id])
+  companyId           String?
+  status              Boolean       @default(true)
+  isSuperAdminCreated Boolean       @default(false)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  Invitations         Invitations[]
 }
 
-model Invitations {
-  id                String           @id @default(uuid())
-  invitedByUserId   String
-  invitedBy         User             @relation("invitedBy", fields: [invitedByUserId], references: [id])
-  invitedToUserId   String
-  invitedTo         User             @relation("invitedTo", fields: [invitedToUserId], references: [id])
-  userCompanyRoleId String?
-  userCompanyRole   UserCompanyRole? @relation(fields: [userCompanyRoleId], references: [id])
-  invitationStatus  InvitationStatus
-  invitationToken   String
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-}
+  model Invitations {
+    id                String           @id @default(uuid())
+    invitedByUserId   String
+    invitedBy         User             @relation("invitedBy", fields: [invitedByUserId], references: [id])
+    invitedToUserId   String
+    invitedTo         User             @relation("invitedTo", fields: [invitedToUserId], references: [id])
+    userCompanyRoleId String?
+    userCompanyRole   UserCompanyRole? @relation(fields: [userCompanyRoleId], references: [id])
+    invitationStatus  InvitationStatus
+    invitationToken   String
+    createdAt         DateTime         @default(now())
+    updatedAt         DateTime         @updatedAt
+  }
 
 model Company {
   id              String            @id @default(uuid())

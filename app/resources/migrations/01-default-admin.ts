@@ -24,17 +24,17 @@ export async function up() {
 
 	const adminUser = await prisma.user.findFirst({
 		where: {
-			email: process.env.ADMIN_EMAIL || 'pp757439@gmail.com',
+			email: process.env.ADMIN_EMAIL || 'pratikp@serviots.com',
 		},
 	});
 
 	if (!adminUser) {
 		user = await prisma.user.create({
 			data: {
-				email: process.env.ADMIN_EMAIL || 'pp757439@gmail.com',
+				email: process.env.ADMIN_EMAIL || 'pratikp@serviots.com',
 				isVerified: true,
 				isActive: true,
-				isSuperAdminCreated:true,
+				// isSuperAdminCreated:true,
 				password: await hashPassword(
 					process.env.ADMIN_PASSWORD || 'SuperAdmin1213#'
 				),
@@ -47,6 +47,7 @@ export async function up() {
 			data: {
 				userId: user.id,
 				roleId: role.id,
+				isSuperAdminCreated:true,
 			},
 		});
 	}

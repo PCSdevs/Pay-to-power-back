@@ -41,22 +41,26 @@ const getUserRoleByUserIdAndCompanyId = async (
 	return userRole?.role;
 };
 
-const addUser = async (userId: string, companyId: string, roleId: string) => {
+const addUser = async (userId: string, companyId: string, roleId: string, isSuperAdminCreated: boolean) => {
 	const user = await prisma.userCompanyRole.create({
 		data: {
 			userId: userId,
 			companyId: companyId,
 			roleId: roleId,
 			status: false,
+			isSuperAdminCreated: isSuperAdminCreated
 		},
 	});
 	return user;
 };
 
-const updateUserId = async (userId: string, id: string) => {
+const updateUserId = async (userId: string, id: string, isSuperAdminCreated: boolean) => {
 	const user = await prisma.userCompanyRole.update({
 		where: { id: id },
-		data: { userId: userId },
+		data: {
+			userId: userId,
+			isSuperAdminCreated: isSuperAdminCreated
+		},
 	});
 	return user;
 };
@@ -181,11 +185,13 @@ const getAllUsersByRole = async (data: {
 	companyId: string;
 	roleId: string;
 }) => {
-	const supervisors = await prisma.userCompanyRole.findMany({
+	const users = await prisma.userCompanyRole.findMany({
 		where: {
 			companyId: data.companyId,
 			roleId: data.roleId,
-			status: true,
+			NOT: {
+				userId: null,
+			},
 		},
 		include: {
 			user: true,
@@ -196,11 +202,11 @@ const getAllUsersByRole = async (data: {
 		where: {
 			companyId: data.companyId,
 			roleId: data.roleId,
-			status: true,
+			// status: true,
 		},
 	});
 
-	return { supervisors, count };
+	return { users, count };
 };
 
 export const userCompanyRoleRepository = {

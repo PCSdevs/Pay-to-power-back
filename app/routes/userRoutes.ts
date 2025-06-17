@@ -26,8 +26,8 @@ router.post(
 	reInviteUserValidationRules,
 	asyncHandler(async (req:RequestExtended) => {
 		const {user}=req
-		const {userCompanyRoleId}=req.body
-		const data={user:user,userCompanyRoleId:userCompanyRoleId}
+		const {reInviteUserValidationRules}=req.body
+		const data={user:user,userCompanyRoleId:reInviteUserValidationRules}
 		return userService.reInviteUserService(data);
 	})
 );

@@ -8,6 +8,7 @@ import { logger } from "./utils/logger";
 import { migrate } from './migration';
 import cors from "cors";
 import { configData } from "./config/config";
+import { sanitizeInput } from "./middlewares/sanitizeInput";
 
 const PORT = configData.port || 8000;
 
@@ -37,6 +38,7 @@ app.use((req: RequestExtended, res, next) => {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(sanitizeInput);
 
 // Run migrations
 migrate().catch((err:any) => {

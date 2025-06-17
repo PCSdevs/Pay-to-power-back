@@ -41,7 +41,6 @@ CREATE TABLE "User" (
     "isDeleted" BOOLEAN NOT NULL DEFAULT false,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "isInvited" BOOLEAN NOT NULL DEFAULT false,
-    "isSuperAdminCreated" BOOLEAN NOT NULL DEFAULT false,
     "createdBy" TEXT,
     "updatedBy" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -80,10 +79,12 @@ CREATE TABLE "Role" (
     "isSystem" BOOLEAN NOT NULL DEFAULT false,
     "isAdmin" BOOLEAN NOT NULL DEFAULT false,
     "isSuperAdmin" BOOLEAN NOT NULL DEFAULT false,
+    "isSuperAdminCreated" BOOLEAN NOT NULL DEFAULT false,
     "status" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdBy" TEXT,
+    "companyId" TEXT,
     "updatedBy" TEXT,
 
     CONSTRAINT "Role_pkey" PRIMARY KEY ("id")
@@ -125,6 +126,7 @@ CREATE TABLE "UserCompanyRole" (
     "roleId" TEXT NOT NULL,
     "companyId" TEXT,
     "status" BOOLEAN NOT NULL DEFAULT true,
+    "isSuperAdminCreated" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -169,14 +171,14 @@ CREATE UNIQUE INDEX "Migration_id_key" ON "Migration"("id");
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
--- CreateIndex
-CREATE UNIQUE INDEX "Role_roleName_key" ON "Role"("roleName");
-
 -- AddForeignKey
 ALTER TABLE "ForgotPasswordToken" ADD CONSTRAINT "ForgotPasswordToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AccessToken" ADD CONSTRAINT "AccessToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Role" ADD CONSTRAINT "Role_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Permission" ADD CONSTRAINT "Permission_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "Role"("id") ON DELETE CASCADE ON UPDATE CASCADE;

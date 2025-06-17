@@ -34,7 +34,7 @@ const createCompany = async ({ user, companyData }: CreateCompanyData) => {
 		await createAndAssignRole(roleData, company.id, id, true);
 	}
 	return {
-		message: 'Record created successfully.',
+		message: 'Company created successfully.',
 	};
 };
 

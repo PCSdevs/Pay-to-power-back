@@ -21,7 +21,7 @@ router.use(
   "/health",
   asyncHandler(async () => {
     return {
-      message: "Hello from Pay2Power BackEnd",
+      message: "Hello from Serviots BackEnd",
     };
   }),
 );

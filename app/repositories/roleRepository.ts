@@ -36,11 +36,15 @@ const getSuperUserByUserId = async (userId: string) => {
 	return null;
 };
 
-const getRole = async (roleId: string, companyId: string) => {
+const getRole = async (roleId: string, companyId: string, isSuperAdminCreated: boolean = false) => {
 	const role = await prisma.role.findFirst({
 		where: {
 			id: roleId,
 			companyId: companyId,
+			OR: [
+				{ isSuperAdminCreated },
+				{ isSystem: true },
+			],
 		},
 	});
 	return role;
@@ -51,6 +55,9 @@ const getRoleById = async (id: string) => {
 		where: {
 			id,
 		},
+		include: {
+			Permission: true
+		}
 	});
 	return role;
 };
@@ -98,7 +105,7 @@ const getRoleByCompanyId = async (id: string, needSuperAdminCreated?: boolean) =
 const isSameRoleName = async (
 	companyId: string,
 	roleName: string,
-	roleId = ''
+	roleId: string = ''
 ) => {
 	const isExistingRole = await prisma.role.findFirst({
 		where: {
@@ -155,6 +162,38 @@ const createRole = async (
 
 	return role;
 };
+const cloneRole = async (
+	roleName: string,
+	roleDescription: string,
+	isAdmin: boolean = false,
+	companyId: string,
+	userId: string,
+	isSuperAdminCreated: boolean,
+	isSystem?: boolean,
+	permission?: any
+) => {
+	const sanitizedPermissions = permission?.map(({ id, roleId, createdAt, updatedAt, ...rest }: any) => rest);
+
+	const role = await prisma.role.create({
+		data: {
+			roleName,
+			roleDescription,
+			isAdmin,
+			isSystem,
+			isSuperAdminCreated,
+			isSuperAdmin: false,
+			companyId: companyId,
+			createdBy: userId,
+			Permission: {
+				createMany: {
+					data: sanitizedPermissions && sanitizedPermissions.length > 0 ? sanitizedPermissions : isAdmin ? DefaultAdminPermissions : DefaultPermissions,
+				},
+			},
+		},
+	});
+
+	return role;
+};
 
 const checkCompanyAndRole = async (roleId: string, companyId: string) => {
 	const isValid = await prisma.company.findFirst({
@@ -191,27 +230,27 @@ const getRoleByCompany = async (data: {
 	return companyRole ? companyRole.role : null;
 };
 
-const getAllSupervisors = async (companyId: string) => {
-	const role = await prisma.role.findFirst({
-		where: {
-			companyId: companyId,
-			isAdmin: false,
-			roleName: 'Supervisor',
-		},
-	});
+// const getAllSupervisors = async (companyId: string) => {
+// 	const role = await prisma.role.findFirst({
+// 		where: {
+// 			companyId: companyId,
+// 			isAdmin: false,
+// 			roleName: 'Supervisor',
+// 		},
+// 	});
 
-	const supervisors = await prisma.userCompanyRole.findMany({
-		where: {
-			roleId: role?.id,
-			companyId: companyId,
-		},
-		include: {
-			user: true,
-		},
-	});
+// 	const supervisors = await prisma.userCompanyRole.findMany({
+// 		where: {
+// 			roleId: role?.id,
+// 			companyId: companyId,
+// 		},
+// 		include: {
+// 			user: true,
+// 		},
+// 	});
 
-	return supervisors;
-};
+// 	return supervisors;
+// };
 
 const getRoleInCompany = async (companyId: string, userId: string) => {
 	const role = await prisma.userCompanyRole.findFirst({
@@ -226,6 +265,62 @@ const getRoleInCompany = async (companyId: string, userId: string) => {
 	return role;
 };
 
+const updateRole = async (
+	roleName: string,
+	roleDescription: string,
+	companyId: string,
+	roleId: string
+) => {
+	const role = await prisma.role.update({
+		where: {
+			id: roleId,
+			companyId: companyId
+		},
+		data: {
+			roleName,
+			roleDescription
+		},
+	});
+
+	return role;
+};
+
+const deleteRole = async (roleId: string, companyId: string) => {
+
+	await prisma.permission.deleteMany({
+		where: {
+			roleId,
+		},
+	});
+
+
+	const deletedRole = await prisma.role.delete({
+		where: {
+			id: roleId,
+			companyId: companyId
+		},
+	});
+
+	return deletedRole;
+};
+
+const updateRoleStatus = async (
+	{ status, companyId, roleId }: { status: boolean, companyId: string, roleId: string }
+) => {
+	const role = await prisma.role.update({
+		where: {
+			id: roleId,
+			companyId: companyId
+		},
+		data: {
+			status: status
+		},
+	});
+
+	return role;
+};
+
+
 export const roleRepository = {
 	getSuperAdminRole,
 	getRoleById,
@@ -238,6 +333,10 @@ export const roleRepository = {
 	getRole,
 	getRoleByCompany,
 	getSuperUserByUserId,
-	getAllSupervisors,
+	// getAllSupervisors,
 	getRoleInCompany,
+	updateRole,
+	deleteRole,
+	cloneRole,
+	updateRoleStatus
 };

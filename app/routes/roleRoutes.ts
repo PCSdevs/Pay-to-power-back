@@ -1,7 +1,7 @@
 import express from 'express';
 import asyncHandler from '../utils/async-handler';
 import { isAuthenticated } from '../middlewares/authMiddleware';
-import { createRoleValidationRules } from '../helpers/validators';
+import { cloneRoleValidationRules, createRoleValidationRules, deleteRoleValidationRules, roleStatusUpdateValidationRules, updateRoleValidationRules } from '../helpers/validators';
 import { roleService } from '../services/roleService';
 
 const router = express.Router();
@@ -28,6 +28,42 @@ router.get(
 	isAuthenticated,
 	asyncHandler(async (req) => {
 		return roleService.getRoleService(req);
+	})
+);
+
+router.put(
+	'/',
+	isAuthenticated,
+	updateRoleValidationRules,
+	asyncHandler(async (req) => {
+		return roleService.updateRoleService(req);
+	})
+);
+
+router.delete(
+	'/',
+	isAuthenticated,
+	deleteRoleValidationRules,
+	asyncHandler(async (req) => {
+		return roleService.deleteRoleService(req);
+	})
+);
+
+router.put(
+	'/update-status',
+	isAuthenticated,
+	roleStatusUpdateValidationRules,
+	asyncHandler(async (req) => {
+		return roleService.roleStatusUpdateService(req);
+	})
+);
+
+router.post(
+	'/clone',
+	isAuthenticated,
+	cloneRoleValidationRules,
+	asyncHandler(async (req) => {
+		return roleService.cloneRoleService(req);
 	})
 );
 
