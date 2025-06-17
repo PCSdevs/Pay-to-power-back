@@ -1,0 +1,40 @@
+import express from 'express';
+import asyncHandler from '../utils/async-handler';
+import { isAuthenticated } from '../middlewares/authMiddleware';
+import { RequestExtended } from '../interfaces/global';
+import { deviceSubscriptionService } from '../services/subscriptionService';
+
+const router = express.Router();
+
+router.post(
+  '/create_subscription',
+  isAuthenticated,
+  asyncHandler(async (req: RequestExtended, res) => {
+    const result = await deviceSubscriptionService.createSubscription(req);
+    return result;
+  })
+);
+
+router.put(
+    '/subscriptions/:deviceId',
+    isAuthenticated,
+    asyncHandler(async (req: RequestExtended, res) => {
+      const deviceId = req.params.deviceId;
+      const updateData = req.body;
+  
+      const result = await deviceSubscriptionService.updateSubscription(deviceId, updateData, req.user);
+      return result;
+    })
+  );
+
+  router.get(
+	'/',
+	isAuthenticated,
+	asyncHandler(async (req:RequestExtended, res) => {
+		const result = await deviceSubscriptionService.getAllSubscriptions(req);
+		res.json({ data: result, message: 'Subscriptions fetched successfully' });
+	})
+);
+
+
+export default router;

@@ -50,6 +50,9 @@ model User {
   invitedTo           Invitations[]         @relation("invitedTo")
   VerifyUserToken     VerifyUserToken[]
   UserCompanyRole     UserCompanyRole[]
+  OfficeLocation      OfficeLocation[]
+  SubscriptionHistory SubscriptionHistory[] @relation("ChangedByUser")
+  Device              Device[]
 
   @@index([email])
 }
@@ -130,19 +133,19 @@ model UserCompanyRole {
   Invitations         Invitations[]
 }
 
-  model Invitations {
-    id                String           @id @default(uuid())
-    invitedByUserId   String
-    invitedBy         User             @relation("invitedBy", fields: [invitedByUserId], references: [id])
-    invitedToUserId   String
-    invitedTo         User             @relation("invitedTo", fields: [invitedToUserId], references: [id])
-    userCompanyRoleId String?
-    userCompanyRole   UserCompanyRole? @relation(fields: [userCompanyRoleId], references: [id])
-    invitationStatus  InvitationStatus
-    invitationToken   String
-    createdAt         DateTime         @default(now())
-    updatedAt         DateTime         @updatedAt
-  }
+model Invitations {
+  id                String           @id @default(uuid())
+  invitedByUserId   String
+  invitedBy         User             @relation("invitedBy", fields: [invitedByUserId], references: [id])
+  invitedToUserId   String
+  invitedTo         User             @relation("invitedTo", fields: [invitedToUserId], references: [id])
+  userCompanyRoleId String?
+  userCompanyRole   UserCompanyRole? @relation(fields: [userCompanyRoleId], references: [id])
+  invitationStatus  InvitationStatus
+  invitationToken   String
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
 
 model Company {
   id              String            @id @default(uuid())
@@ -156,10 +159,161 @@ model Company {
   updatedBy       String?
   UserCompanyRole UserCompanyRole[]
   Role            Role[]
+
+  Device Device[]
+
+  DeviceCategory DeviceCategory[]
+
+  Subscription Subscription[]
+
+  SubscriptionHistory SubscriptionHistory[]
 }
 
 enum InvitationStatus {
   Pending
   Accepted
   Rejected
+}
+
+model DeviceCategory {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  devices     Device[]
+  companyId           String
+  company             Company                 @relation(fields: [companyId], references: [id])
+}
+
+model Device {
+  id                  String                  @id @default(uuid())
+  macAddress          String                  @unique
+  name                String
+  category            DeviceCategory?          @relation(fields: [categoryId], references: [id])
+  categoryId          String?
+  office              OfficeLocation?         @relation(fields: [officeId], references: [id])
+  officeId            String?
+  wifiSsid            String?
+  wifiPassword        String?
+  status              DeviceStatus            @default(active)
+  lastUpdated         DateTime                @updatedAt
+  createdAt           DateTime                @default(now())
+  subscriptions       Subscription[]
+  connection          DeviceConnectionStatus? @relation(fields: [connectionid], references: [id])
+  connectionid        String?
+  subscriptionHistory SubscriptionHistory[]
+  messages            Message[]
+  user                User                   @relation(fields: [userId], references: [id])
+  userId              String
+  companyId           String
+  company             Company                 @relation(fields: [companyId], references: [id])
+}
+
+model OfficeLocation {
+  id      String   @id @default(uuid())
+  user    User?    @relation(fields: [userId], references: [id])
+  userId  String?
+  name    String
+  address String
+  devices Device[]
+}
+
+model Subscription {
+  id             String                @id @default(uuid())
+  device         Device                @relation(fields: [deviceId], references: [id])
+  deviceId       String
+  mode           String
+  recurring      Boolean               @default(false)
+  additionalTime String?
+  dueTimestamp   DateTime?
+  history        SubscriptionHistory[]
+  billingCycles  BillingCycle[]
+  companyId           String
+  company             Company                 @relation(fields: [companyId], references: [id])
+}
+
+model SubscriptionHistory {
+  id             String                 @id @default(uuid())
+  subscription   Subscription       @relation(fields: [subscriptionId], references: [id])
+  subscriptionId String
+  device         Device             @relation(fields: [deviceId], references: [id])
+  deviceId       String
+  mode           String
+  recurring      Boolean
+  additionalTime String?
+  dueTimestamp   DateTime?
+  action         SubscriptionAction
+  changedBy      User               @relation("ChangedByUser", fields: [changedById], references: [id])
+  changedById    String
+  changedAt      DateTime           @default(now())
+  companyId           String
+  company             Company                 @relation(fields: [companyId], references: [id])
+}
+
+model BillingCycle {
+  id               String            @id @default(uuid())
+  subscription     Subscription  @relation(fields: [subscriptionId], references: [id])
+  subscriptionId   String
+  startDate        DateTime
+  endDate          DateTime
+  amount           Decimal
+  status           BillingStatus @default(pending)
+  paymentMethod    String?
+  paymentReference String?
+  createdAt        DateTime      @default(now())
+}
+
+model DeviceConnectionStatus {
+  id       String      @id @default(uuid())
+  deviceId String   @unique
+  lastSeen DateTime
+  isOnline Boolean
+
+  Device Device[]
+}
+
+model Message {
+  id             String           @id @default(uuid())
+  deviceId       String
+  category       MessageCategory
+  topic          String
+  payload        String
+  timestamp      DateTime        @default(now())
+  deliveryStatus DeliveryStatus  @default(pending)
+
+  device Device? @relation(fields: [deviceId], references: [macAddress])
+
+  @@unique([deviceId, category])
+}
+
+enum DeviceStatus {
+  active
+  inactive
+  suspended
+  maintenance
+}
+
+enum SubscriptionAction {
+  created
+  updated
+  cancelled
+  renewed
+}
+
+enum BillingStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
+enum MessageCategory {
+  wifi
+  subscription
+}
+
+enum DeliveryStatus {
+  pending
+  delivered
+  acknowledged
 }
