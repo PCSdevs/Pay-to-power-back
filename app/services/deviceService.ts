@@ -2,6 +2,9 @@ import { RequestExtended } from '../interfaces/global';
 import { deviceCategoryRepository } from '../repositories/deviceCategoryRepository';
 import { deviceRepository } from '../repositories/deviceRepository';
 import moment from 'moment-timezone';
+import { publishMessage } from '../serverUtils';
+import ApiException from '../utils/errorHandler';
+import { ErrorCodes } from '../utils/response';
 
 const createDeviceCategory = async (req: RequestExtended) => {
 
@@ -40,39 +43,36 @@ const listDeviceCategories = async (req: RequestExtended) => {
 };
 
 const registerDevice = async (req: RequestExtended) => {
+
+	const {user}= req
 	const {
-		mac_address,
+		macAddress,
 		name,
-		category_id,
-		wifi_ssid,
-		wifi_password,
-		office_id,
+		wifiSsid,
+		wifiPassword,
+		// office_id,
+		// category_id,
 	} = req.body;
 
 	// Check if category exists
-	const category = await deviceCategoryRepository.getCategoryById(category_id);
-	if (!category) {
-		throw { statusCode: 404, message: 'Device category not found' };
-	}
+	// const category = await deviceCategoryRepository.getCategoryById(category_id);
+	// if (!category) {
+	// 	throw { statusCode: 404, message: 'Device category not found' };
+	// }
 
-	// Check for existing device by MAC
-	const existingDevice = await deviceRepository.getDeviceByMac(mac_address);
+	const existingDevice = await deviceRepository.getDeviceByMac(macAddress);
 
 	if (existingDevice) {
-		throw { statusCode: 400, message: 'Device already registered' };
+		throw new ApiException(ErrorCodes.DEVICE_ALREADY_REGISTER)
 	}
 
-	// Create device
 	const newDevice = await deviceRepository.createDevice({
-		macAddress: mac_address,
+		macAddress,
 		name,
-		categoryId: category_id,
-		officeId: office_id,
-		wifiSsid: wifi_ssid,
-		wifiPassword: wifi_password,
-		companyId: req.user.companyId,
-		userId: req.user.id, // required
-		// connectionid: optional if you have it
+		wifiSsid,
+		wifiPassword,
+		companyId: user.companyId,
+		userId: user.id, 
 	});
 
 
@@ -93,21 +93,34 @@ const updateDevice = async (
 	if (!existingDevice) {
 	  throw { statusCode: 404, message: 'Device not found' };
 	}
+
+	const updateDeviceData={
+		macAddress: updateData.macAddress,
+		name:updateData?.name,
+		// categoryId: category_id,
+		// officeId: office_id,
+		wifiSsid: updateData.wifiSsid,
+		wifiPassword: updateData.wifiPassword,
+		companyId: req.user.companyId,
+		userId: req.user.id, // required
+		// connectionid: optional if you have it
+	}
+
   
-	const updatedDevice = await deviceRepository.updateDevice(deviceId, updateData);
+	const updatedDevice = await deviceRepository.updateDevice(deviceId, updateDeviceData);
   
 	if (updateData.wifiSsid || updateData.wifiPassword) {
 	  const mqttPayload = {
 		device_id: deviceId,
-		mac_address: existingDevice.macAddress,
-		wifi_ssid: updateData.wifiSsid,
-		wifi_password: updateData.wifiPassword,
-		office_id: updateData.officeId,
+		macAddress: existingDevice.macAddress,
+		wifiSsid: updateData.wifi_ssid,
+		wifiPassword: updateData.wifi_password,
+		// office_id: updateData.officeId,
 		status: 'WiFi credentials updated',
 	  };
   
 	  const mqttTopic = `devices/${deviceId}/wifi`;
-	//   await publishMessage(mqttTopic, JSON.stringify(mqttPayload), deviceId);
+	  await publishMessage(mqttTopic, JSON.stringify(mqttPayload), deviceId);
 	}
   
 	return {
@@ -118,7 +131,8 @@ const updateDevice = async (
   
 
   const getAllDevices = async (req: RequestExtended) => {
-	const devices = await deviceRepository.getAllDevices(req?.user?.companyId);
+	const {user}=req
+	const devices = await deviceRepository.getAllDevices(user?.companyId);
   
 	const currentTime = moment().tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');
   
@@ -136,8 +150,8 @@ const updateDevice = async (
 	};
   };
 export const deviceService = {
-	createDeviceCategory,
-	listDeviceCategories,
+	// createDeviceCategory,
+	// listDeviceCategories,
 	registerDevice,
 	updateDevice,
 	getAllDevices

@@ -280,8 +280,7 @@ model Message {
   payload        String
   timestamp      DateTime        @default(now())
   deliveryStatus DeliveryStatus  @default(pending)
-
-  device Device? @relation(fields: [deviceId], references: [macAddress])
+  device Device @relation(fields: [deviceId], references: [id])   //macAddress
 
   @@unique([deviceId, category])
 }

@@ -7,7 +7,7 @@ import { prisma } from './client/prisma';
 import { setTimeout as sleep } from 'timers/promises';
 import { MessageCategory } from '@prisma/client';
 
-const EMQX_ENDPOINT = 'm0b8890a.ala.dedicated.aws.emqxcloud.com';
+const EMQX_ENDPOINT = 'hb778060.ala.dedicated.aws.emqxcloud.com';
 const EMQX_PORT = 8883;
 const CA_PATH = path.resolve(__dirname, './certs/emqxcloud-ca.crt');
 
@@ -15,8 +15,8 @@ const options: mqtt.IClientOptions = {
     host: EMQX_ENDPOINT,
     port: EMQX_PORT,
     protocol: 'mqtts',
-    username: 'harshil',
-    password: 'harshil',
+    username: 'pay2power',
+    password: 'pay2power',
     ca: fs.readFileSync(CA_PATH),
     rejectUnauthorized: true,
 };
@@ -167,9 +167,9 @@ export async function publishMessageWithIST(
 }
 
 // Start publishing loop
-(async function startPublisherLoop() {
-    while (true) {
-        await publishMessage('demo/topic', 'Hello from EMQX Cloud', 'device123');
-        await sleep(5000);
-    }
-})();
+// (async function startPublisherLoop() {
+//     while (true) {
+//         await publishMessage('demo/topic', 'Hello from EMQX Cloud', 'device123');
+//         await sleep(5000);
+//     }
+// })();

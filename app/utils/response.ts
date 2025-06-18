@@ -186,6 +186,11 @@ export const ErrorCodes = {
     code: 1602,
     message: "Start date and end date cannot be greater than today.",
   },
+  DEVICE_ALREADY_REGISTER: {
+    status: 400,
+    code: 1603,
+    message: "Device with macAddress is already registered..",
+  },
   CUSTOM_ERROR: (status: number, code: number, message: string) => ({
     status,
     code,

@@ -8,55 +8,55 @@ import { publishMessage, publishMessageWithIST } from '../serverUtils';
 
 const createSubscription = async (req: RequestExtended) => {
     const {
-        device_id,
+        deviceId,
         mode,
         recurring,
-        additional_time,
-        due_timestamp
+        additionalTime,
+        dueTimestamp
     } = req.body;
 
-    const device = await deviceRepository.getDeviceById(device_id);
+    const device = await deviceRepository.getDeviceById(deviceId);
     if (!device) {
         throw new Error('Device not found');
     }
 
     const newSubscription = await subscriptionRepository.createSubscription({
-        deviceId: device_id,
+        deviceId,
         mode,
         recurring,
-        additionalTime: additional_time,
-        dueTimestamp: due_timestamp,
+        additionalTime,
+        dueTimestamp,
         companyId:req?.user?.companyId
     });
 
     await subscriptionRepository.recordHistory({
         subscriptionId: newSubscription.id,
-        deviceId: device_id,
+        deviceId: deviceId,
         mode,
         recurring,
-        additionalTime: additional_time,
-        dueTimestamp: due_timestamp,
+        additionalTime: additionalTime,
+        dueTimestamp: dueTimestamp,
         action: 'created',
         changedById: req.user.id,
         companyId:req?.user?.companyId
     });
 
     const mqtt_payload = {
-        event: 'subscription_created',
+        event: 'subscriptionCreated',
         subscription_id: newSubscription.id,
-        device_id,
-        device_name: device.name,
-        device_mac: device.macAddress,
+        deviceId,
+        deviceName: device.name,
+        deviceMacAddress: device.macAddress,
         mode,
         recurring,
-        additional_time: additional_time?.toString(),
-        due_timestamp: due_timestamp?.toString()
+        additionalTime: additionalTime?.toString(),
+        dueTimestamp: dueTimestamp?.toString()
     };
 
     publishMessageWithIST(
-        `device/${device_id}/subscription`,
+        `device/${deviceId}/subscription`,
         mqtt_payload,
-        String(device_id)
+        String(deviceId)
     );
 
     return {
@@ -75,13 +75,12 @@ const updateSubscription = async (
     },
     user: any
 ) => {
-    // Step 1: Fetch existing subscription
+
     const existing = await subscriptionRepository.getByDeviceId(deviceId);
     if (!existing) {
         throw new Error('Subscription not found');
     }
 
-    // Step 2: Update subscription with new fields
     await subscriptionRepository.updateByDeviceId(deviceId, {
         mode: updateData.mode,
         recurring: updateData.recurring,
@@ -104,18 +103,16 @@ const updateSubscription = async (
         companyId:user?.comanyId
     });
 
-    // Step 4: Fetch final updated record
     const final = await subscriptionRepository.getByDeviceId(deviceId);
 
-    // Step 5: Publish MQTT notification
     await publishMessage(
         `devices/${deviceId}/subscription`,
         JSON.stringify({
             device_id: final?.deviceId,
             mode: final?.mode,
             recurring: final?.recurring,
-            additional_time: final?.additionalTime,
-            due_timestamp: final?.dueTimestamp?.toISOString?.(),
+            additionalTime: final?.additionalTime,
+            dueTimestamp: final?.dueTimestamp?.toISOString?.(),
             status: 'Subscription updated',
         }),
         deviceId

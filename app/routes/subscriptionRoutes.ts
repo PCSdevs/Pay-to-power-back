@@ -7,7 +7,7 @@ import { deviceSubscriptionService } from '../services/subscriptionService';
 const router = express.Router();
 
 router.post(
-  '/create_subscription',
+  '/create',
   isAuthenticated,
   asyncHandler(async (req: RequestExtended, res) => {
     const result = await deviceSubscriptionService.createSubscription(req);
@@ -16,7 +16,7 @@ router.post(
 );
 
 router.put(
-    '/subscriptions/:deviceId',
+    '/:deviceId',
     isAuthenticated,
     asyncHandler(async (req: RequestExtended, res) => {
       const deviceId = req.params.deviceId;

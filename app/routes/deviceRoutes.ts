@@ -7,26 +7,26 @@ import { deviceService } from '../services/deviceService';
 
 const router = express.Router();
 
-router.post(
-  '/device-categories',
-  isAuthenticated,
-  asyncHandler(async (req:RequestExtended, res) => {
-    const result = await deviceService.createDeviceCategory(req);
-    return result;
-  })
-);
+// router.post(
+//   '/device-categories',
+//   isAuthenticated,
+//   asyncHandler(async (req:RequestExtended, res) => {
+//     const result = await deviceService.createDeviceCategory(req);
+//     return result;
+//   })
+// );
 
-router.get(
-  '/device-categories',
-  isAuthenticated,
-  asyncHandler(async (req:RequestExtended, res) => {
-    const result = await deviceService.listDeviceCategories(req);
-    return result;
-  })
-);
+// router.get(
+//   '/device-categories',
+//   isAuthenticated,
+//   asyncHandler(async (req:RequestExtended, res) => {
+//     const result = await deviceService.listDeviceCategories(req);
+//     return result;
+//   })
+// );
 
 router.post(
-  '/register_device',
+  '/register',
   isAuthenticated,
   asyncHandler(async (req: RequestExtended, res) => {
     const result = await deviceService.registerDevice(req);
