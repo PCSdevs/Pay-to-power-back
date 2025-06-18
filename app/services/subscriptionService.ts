@@ -1,12 +1,20 @@
 // service/deviceSubscriptionService.ts
 import { RequestExtended } from '../interfaces/global';
+import { checkPermission } from '../middlewares/isAuthorizedUser';
 import { deviceRepository } from '../repositories/deviceRepository';
 import { subscriptionRepository } from '../repositories/subscriptionRepository';
 import { publishMessage, publishMessageWithIST } from '../serverUtils';
-// import { publishMessageWithISTTime } from '../utils/mqtt-utils';
 
 
 const createSubscription = async (req: RequestExtended) => {
+
+    const { user } = req
+
+    await checkPermission(user.id, user.companyId, {
+        moduleName: 'Subcription',
+        permission: ['add'],
+    });
+
     const {
         deviceId,
         mode,
@@ -26,7 +34,7 @@ const createSubscription = async (req: RequestExtended) => {
         recurring,
         additionalTime,
         dueTimestamp,
-        companyId:req?.user?.companyId
+        companyId: req?.user?.companyId
     });
 
     await subscriptionRepository.recordHistory({
@@ -38,7 +46,7 @@ const createSubscription = async (req: RequestExtended) => {
         dueTimestamp: dueTimestamp,
         action: 'created',
         changedById: req.user.id,
-        companyId:req?.user?.companyId
+        companyId: req?.user?.companyId
     });
 
     const mqtt_payload = {
@@ -76,6 +84,11 @@ const updateSubscription = async (
     user: any
 ) => {
 
+    await checkPermission(user.id, user.companyId, {
+        moduleName: 'Subcription',
+        permission: ['edit'],
+    });
+
     const existing = await subscriptionRepository.getByDeviceId(deviceId);
     if (!existing) {
         throw new Error('Subscription not found');
@@ -100,7 +113,7 @@ const updateSubscription = async (
             : existing.dueTimestamp,
         action: 'updated',
         changedById: user?.userId,
-        companyId:user?.comanyId
+        companyId: user?.comanyId
     });
 
     const final = await subscriptionRepository.getByDeviceId(deviceId);
@@ -121,9 +134,16 @@ const updateSubscription = async (
     return final;
 };
 
-const getAllSubscriptions = async (req:RequestExtended) => {
-	const subscriptions = await subscriptionRepository.getAll(req?.user.companyId);
-	return subscriptions;
+const getAllSubscriptions = async (req: RequestExtended) => {
+
+    const { user } = req
+
+    await checkPermission(user.id, user.companyId, {
+        moduleName: 'Subcription',
+        permission: ['view'],
+    });
+    const subscriptions = await subscriptionRepository.getAll(req?.user.companyId);
+    return subscriptions;
 };
 export const deviceSubscriptionService = {
     createSubscription,

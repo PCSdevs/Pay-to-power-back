@@ -4,25 +4,24 @@ import moment from 'moment-timezone';
 import { publishMessage } from '../serverUtils';
 import ApiException from '../utils/errorHandler';
 import { ErrorCodes } from '../utils/response';
+import { checkPermission } from '../middlewares/isAuthorizedUser';
 
 
 const registerDevice = async (req: RequestExtended) => {
 
-	const {user}= req
+	const { user } = req
+	await checkPermission(user.id, user.companyId, {
+		moduleName: 'Device',
+		permission: ['add'],
+	});
+
 	const {
 		macAddress,
 		name,
 		// wifiSsid,
 		// wifiPassword,
-		// office_id,
-		// category_id,
 	} = req.body;
 
-	// Check if category exists
-	// const category = await deviceCategoryRepository.getCategoryById(category_id);
-	// if (!category) {
-	// 	throw { statusCode: 404, message: 'Device category not found' };
-	// }
 
 	const existingDevice = await deviceRepository.getDeviceByMac(macAddress);
 
@@ -36,7 +35,7 @@ const registerDevice = async (req: RequestExtended) => {
 		// wifiSsid,
 		// wifiPassword,
 		// companyId: user.companyId,
-		userId: user.id, 
+		userId: user.id,
 	});
 
 	const mqttPayload = {
@@ -44,12 +43,12 @@ const registerDevice = async (req: RequestExtended) => {
 		macAddress: newDevice.macAddress,
 		// wifiSsid: newDevice.wifiSsid,
 		// wifiPassword: newDevice.wifiPassword,
-		secrectkey:newDevice.secrectkey,
+		secrectkey: newDevice.secrectkey,
 		status: 'WiFi credentials updated',
-	  };
+	};
 
 	const mqttTopic = `devices/${newDevice.id}/wifi`;
-	  await publishMessage(mqttTopic, JSON.stringify(mqttPayload), newDevice.id);
+	await publishMessage(mqttTopic, JSON.stringify(mqttPayload), newDevice.id);
 
 
 	return {
@@ -63,16 +62,23 @@ const updateDevice = async (
 	req: RequestExtended,
 	deviceId: string,
 	updateData: any
-  ) => {
+) => {
+
+	const { user } = req
+	await checkPermission(user.id, user.companyId, {
+		moduleName: 'Device',
+		permission: ['edit'],
+	});
+
 	const existingDevice = await deviceRepository.getDeviceById(deviceId);
-  
+
 	if (!existingDevice) {
-	  throw { statusCode: 404, message: 'Device not found' };
+		throw { statusCode: 404, message: 'Device not found' };
 	}
 
-	const updateDeviceData={
+	const updateDeviceData = {
 		macAddress: updateData.macAddress,
-		name:updateData?.name,
+		name: updateData?.name,
 		// categoryId: category_id,
 		// officeId: office_id,
 		wifiSsid: updateData.wifiSsid,
@@ -82,53 +88,56 @@ const updateDevice = async (
 		// connectionid: optional if you have it
 	}
 
-  
+
 	const updatedDevice = await deviceRepository.updateDevice(deviceId, updateDeviceData);
-  
+
 	if (updateData.wifiSsid || updateData.wifiPassword) {
-	  const mqttPayload = {
-		device_id: deviceId,
-		macAddress: existingDevice.macAddress,
-		wifiSsid: updateData.wifiSsid,
-		wifiPassword: updateData.wifiPassword,
-		// office_id: updateData.officeId,
-		status: 'WiFi credentials updated',
-	  };
-  
-	  const mqttTopic = `devices/${deviceId}/wifi`;
-	  await publishMessage(mqttTopic, JSON.stringify(mqttPayload), deviceId);
+		const mqttPayload = {
+			device_id: deviceId,
+			macAddress: existingDevice.macAddress,
+			wifiSsid: updateData.wifiSsid,
+			wifiPassword: updateData.wifiPassword,
+			status: 'WiFi credentials updated',
+		};
+
+		const mqttTopic = `devices/${deviceId}/wifi`;
+		await publishMessage(mqttTopic, JSON.stringify(mqttPayload), deviceId);
 	}
-  
+
 	return {
-	  data: updatedDevice,
-	  message: 'Device updated successfully.',
+		data: updatedDevice,
+		message: 'Device updated successfully.',
 	};
-  };
-  
+};
+
 
 const getAllDevices = async (req: RequestExtended) => {
-	const {user}=req
-	const {isSuperAdmin} =user
-	const devices = await deviceRepository.getAllDevices(user?.companyId,isSuperAdmin);
-  
-	const currentTime = moment().tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');
-  
-	const sanitizedDevices = devices.map((device) => {
-	  const { wifiSsid, wifiPassword, ...safeData } = device;
-	  return {
-		...safeData,
-		current_time: currentTime,
-	  };
+	const { user } = req
+
+	await checkPermission(user.id, user.companyId, {
+		moduleName: 'Device',
+		permission: ['view'],
 	});
-  
+
+	const { isSuperAdmin } = user
+	const devices = await deviceRepository.getAllDevices(user?.companyId, isSuperAdmin);
+
+	const currentTime = moment().tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');
+
+	const sanitizedDevices = devices.map((device) => {
+		const { wifiSsid, wifiPassword, ...safeData } = device;
+		return {
+			...safeData,
+			current_time: currentTime,
+		};
+	});
+
 	return {
-	  data: sanitizedDevices,
-	  message: 'Devices fetched successfully',
+		data: sanitizedDevices,
+		message: 'Devices fetched successfully',
 	};
 };
 export const deviceService = {
-	// createDeviceCategory,
-	// listDeviceCategories,
 	registerDevice,
 	updateDevice,
 	getAllDevices
