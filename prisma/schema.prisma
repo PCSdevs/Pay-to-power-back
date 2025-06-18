@@ -50,7 +50,6 @@ model User {
   invitedTo           Invitations[]         @relation("invitedTo")
   VerifyUserToken     VerifyUserToken[]
   UserCompanyRole     UserCompanyRole[]
-  OfficeLocation      OfficeLocation[]
   SubscriptionHistory SubscriptionHistory[] @relation("ChangedByUser")
   Device              Device[]
 
@@ -159,12 +158,8 @@ model Company {
   updatedBy       String?
   UserCompanyRole UserCompanyRole[]
   Role            Role[]
-
-  Device Device[]
-
-  DeviceCategory DeviceCategory[]
-
-  Subscription Subscription[]
+  Device          Device[]
+  Subscription    Subscription[]
 
   SubscriptionHistory SubscriptionHistory[]
 }
@@ -175,26 +170,13 @@ enum InvitationStatus {
   Rejected
 }
 
-model DeviceCategory {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  createdAt   DateTime @default(now())
-  devices     Device[]
-  companyId           String
-  company             Company                 @relation(fields: [companyId], references: [id])
-}
-
 model Device {
   id                  String                  @id @default(uuid())
   macAddress          String                  @unique
   name                String
-  category            DeviceCategory?          @relation(fields: [categoryId], references: [id])
-  categoryId          String?
-  office              OfficeLocation?         @relation(fields: [officeId], references: [id])
-  officeId            String?
   wifiSsid            String?
   wifiPassword        String?
+  secrectkey          String                  @default(uuid())
   status              DeviceStatus            @default(active)
   lastUpdated         DateTime                @updatedAt
   createdAt           DateTime                @default(now())
@@ -203,19 +185,10 @@ model Device {
   connectionid        String?
   subscriptionHistory SubscriptionHistory[]
   messages            Message[]
-  user                User                   @relation(fields: [userId], references: [id])
+  user                User                    @relation(fields: [userId], references: [id])
   userId              String
-  companyId           String
-  company             Company                 @relation(fields: [companyId], references: [id])
-}
-
-model OfficeLocation {
-  id      String   @id @default(uuid())
-  user    User?    @relation(fields: [userId], references: [id])
-  userId  String?
-  name    String
-  address String
-  devices Device[]
+  companyId           String?
+  company             Company?                @relation(fields: [companyId], references: [id])
 }
 
 model Subscription {
@@ -227,13 +200,12 @@ model Subscription {
   additionalTime String?
   dueTimestamp   DateTime?
   history        SubscriptionHistory[]
-  billingCycles  BillingCycle[]
-  companyId           String
-  company             Company                 @relation(fields: [companyId], references: [id])
+  companyId      String
+  company        Company               @relation(fields: [companyId], references: [id])
 }
 
 model SubscriptionHistory {
-  id             String                 @id @default(uuid())
+  id             String             @id @default(uuid())
   subscription   Subscription       @relation(fields: [subscriptionId], references: [id])
   subscriptionId String
   device         Device             @relation(fields: [deviceId], references: [id])
@@ -246,25 +218,12 @@ model SubscriptionHistory {
   changedBy      User               @relation("ChangedByUser", fields: [changedById], references: [id])
   changedById    String
   changedAt      DateTime           @default(now())
-  companyId           String
-  company             Company                 @relation(fields: [companyId], references: [id])
-}
-
-model BillingCycle {
-  id               String            @id @default(uuid())
-  subscription     Subscription  @relation(fields: [subscriptionId], references: [id])
-  subscriptionId   String
-  startDate        DateTime
-  endDate          DateTime
-  amount           Decimal
-  status           BillingStatus @default(pending)
-  paymentMethod    String?
-  paymentReference String?
-  createdAt        DateTime      @default(now())
+  companyId      String
+  company        Company            @relation(fields: [companyId], references: [id])
 }
 
 model DeviceConnectionStatus {
-  id       String      @id @default(uuid())
+  id       String   @id @default(uuid())
   deviceId String   @unique
   lastSeen DateTime
   isOnline Boolean
@@ -273,14 +232,14 @@ model DeviceConnectionStatus {
 }
 
 model Message {
-  id             String           @id @default(uuid())
+  id             String          @id @default(uuid())
   deviceId       String
   category       MessageCategory
   topic          String
   payload        String
   timestamp      DateTime        @default(now())
   deliveryStatus DeliveryStatus  @default(pending)
-  device Device @relation(fields: [deviceId], references: [id])   //macAddress
+  device         Device          @relation(fields: [deviceId], references: [id])
 
   @@unique([deviceId, category])
 }
@@ -297,13 +256,6 @@ enum SubscriptionAction {
   updated
   cancelled
   renewed
-}
-
-enum BillingStatus {
-  pending
-  paid
-  failed
-  refunded
 }
 
 enum MessageCategory {

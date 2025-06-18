@@ -1,46 +1,10 @@
 import { RequestExtended } from '../interfaces/global';
-import { deviceCategoryRepository } from '../repositories/deviceCategoryRepository';
 import { deviceRepository } from '../repositories/deviceRepository';
 import moment from 'moment-timezone';
 import { publishMessage } from '../serverUtils';
 import ApiException from '../utils/errorHandler';
 import { ErrorCodes } from '../utils/response';
 
-const createDeviceCategory = async (req: RequestExtended) => {
-
-	// await checkPermission(req.user.id, req.user.companyId, {
-	// 	moduleName: 'Device Setup',
-	// 	permission: ['create'],
-	// });
-
-	const { name, description } = req.body;
-
-	const newCategory = await deviceCategoryRepository.createCategory({
-		name,
-		description,
-		companyId: req.user.companyId,
-	});
-
-	return {
-		data: newCategory,
-		message: 'Device category created successfully.',
-	};
-};
-
-const listDeviceCategories = async (req: RequestExtended) => {
-
-	// await checkPermission(req.user.id, req.user.companyId, {
-	// 	moduleName: 'Device Setup',
-	// 	permission: ['view'],
-	// });
-
-	const categories = await deviceCategoryRepository.getAllCategories(req.user.companyId);
-
-	return {
-		data: categories,
-		message: 'Device categories fetched successfully.',
-	};
-};
 
 const registerDevice = async (req: RequestExtended) => {
 
@@ -48,8 +12,8 @@ const registerDevice = async (req: RequestExtended) => {
 	const {
 		macAddress,
 		name,
-		wifiSsid,
-		wifiPassword,
+		// wifiSsid,
+		// wifiPassword,
 		// office_id,
 		// category_id,
 	} = req.body;
@@ -69,11 +33,23 @@ const registerDevice = async (req: RequestExtended) => {
 	const newDevice = await deviceRepository.createDevice({
 		macAddress,
 		name,
-		wifiSsid,
-		wifiPassword,
-		companyId: user.companyId,
+		// wifiSsid,
+		// wifiPassword,
+		// companyId: user.companyId,
 		userId: user.id, 
 	});
+
+	const mqttPayload = {
+		deviceId: newDevice.id,
+		macAddress: newDevice.macAddress,
+		// wifiSsid: newDevice.wifiSsid,
+		// wifiPassword: newDevice.wifiPassword,
+		secrectkey:newDevice.secrectkey,
+		status: 'WiFi credentials updated',
+	  };
+
+	const mqttTopic = `devices/${newDevice.id}/wifi`;
+	  await publishMessage(mqttTopic, JSON.stringify(mqttPayload), newDevice.id);
 
 
 	return {
@@ -113,8 +89,8 @@ const updateDevice = async (
 	  const mqttPayload = {
 		device_id: deviceId,
 		macAddress: existingDevice.macAddress,
-		wifiSsid: updateData.wifi_ssid,
-		wifiPassword: updateData.wifi_password,
+		wifiSsid: updateData.wifiSsid,
+		wifiPassword: updateData.wifiPassword,
 		// office_id: updateData.officeId,
 		status: 'WiFi credentials updated',
 	  };
@@ -130,9 +106,10 @@ const updateDevice = async (
   };
   
 
-  const getAllDevices = async (req: RequestExtended) => {
+const getAllDevices = async (req: RequestExtended) => {
 	const {user}=req
-	const devices = await deviceRepository.getAllDevices(user?.companyId);
+	const {isSuperAdmin} =user
+	const devices = await deviceRepository.getAllDevices(user?.companyId,isSuperAdmin);
   
 	const currentTime = moment().tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');
   
@@ -148,7 +125,7 @@ const updateDevice = async (
 	  data: sanitizedDevices,
 	  message: 'Devices fetched successfully',
 	};
-  };
+};
 export const deviceService = {
 	// createDeviceCategory,
 	// listDeviceCategories,

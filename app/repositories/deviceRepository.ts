@@ -11,18 +11,10 @@ const createDevice = async (data: {
     name: string;
     wifiSsid?: string;
     wifiPassword?: string;
-    companyId: string;
+    companyId?: string;
     userId: string; 
 }) => {
     return await prisma.device.create({
-        // data: {
-        //     macAddress: data.macAddress,
-        //     name: data.name,
-        //     wifiSsid: data.wifiSsid,
-        //     wifiPassword: data.wifiPassword,
-        //     companyId: data.companyId,
-        //     userId: data.userId
-        // },
         data:data
     });
 };
@@ -47,11 +39,9 @@ const updateDevice = async (
     });
   };
 
-  const getAllDevices = async (companyId:string) => {
+  const getAllDevices = async (companyId: string, isSuperAdmin: boolean) => {
     return await prisma.device.findMany({
-        where:{
-            companyId
-        }
+      where: isSuperAdmin ? {} : { companyId },
     });
   };
 
