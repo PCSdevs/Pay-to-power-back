@@ -42,6 +42,21 @@ const updateDevice = async (
   const getAllDevices = async (companyId: string, isSuperAdmin: boolean) => {
     return await prisma.device.findMany({
       where: isSuperAdmin ? {} : { companyId },
+      include:{
+        company:true
+      }
+    });
+  };
+  const assignCompanyToDevice = async (
+    deviceId: string,
+    companyId: any
+  ) => {
+
+    return await prisma.device.update({
+      where: { id:deviceId },
+      data: {
+        companyId:companyId
+      },
     });
   };
 
@@ -50,5 +65,6 @@ export const deviceRepository = {
     createDevice,
     getDeviceById,
     updateDevice,
-    getAllDevices
+    getAllDevices,
+    assignCompanyToDevice
 };

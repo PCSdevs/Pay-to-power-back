@@ -137,8 +137,38 @@ const getAllDevices = async (req: RequestExtended) => {
 		message: 'Devices fetched successfully',
 	};
 };
+
+const assignCompanyToDevice = async (req: RequestExtended) => {
+
+	const { user } = req
+	await checkPermission(user.id, user.companyId, {
+		moduleName: 'Device',
+		permission: ['add','edit'],
+	});
+
+	const {
+		deviceId,
+		comapnyId
+	} = req.body;
+
+
+	const existingDevice = await deviceRepository.getDeviceById(deviceId);
+
+	if (!existingDevice) {
+		throw new ApiException(ErrorCodes.INVALID_DEVICE_ID)
+	}
+
+	const newDevice = await deviceRepository.assignCompanyToDevice(deviceId,comapnyId);
+
+	return {
+		data: newDevice,
+		message: 'Device assigned successfully.',
+	};
+
+}
 export const deviceService = {
 	registerDevice,
 	updateDevice,
-	getAllDevices
+	getAllDevices,
+	assignCompanyToDevice
 };

@@ -34,6 +34,15 @@ router.post(
   })
 );
 
+router.post(
+  '/assign-company',
+  isAuthenticated,
+  asyncHandler(async (req: RequestExtended, res) => {
+    const result = await deviceService.assignCompanyToDevice(req);
+    return result;
+  })
+);
+
 router.put(
   '/:deviceId',
   isAuthenticated,
