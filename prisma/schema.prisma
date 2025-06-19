@@ -40,7 +40,6 @@ model User {
   isDeleted           Boolean               @default(false)
   isActive            Boolean               @default(true)
   isInvited           Boolean               @default(false)
-  isSuperAdminCreated Boolean               @default(false)
   createdBy           String?
   updatedBy           String?
   createdAt           DateTime              @default(now())
@@ -51,6 +50,10 @@ model User {
   invitedTo           Invitations[]         @relation("invitedTo")
   VerifyUserToken     VerifyUserToken[]
   UserCompanyRole     UserCompanyRole[]
+  SubscriptionHistory SubscriptionHistory[] @relation("ChangedByUser")
+  Device              Device[]
+
+  @@index([email])
 }
 
 model ForgotPasswordToken {
@@ -98,7 +101,6 @@ model Permission {
   edit       Boolean  @default(false)
   delete     Boolean  @default(false)
   add        Boolean  @default(false)
-  approval   Boolean  @default(false)
   role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
   roleId     String
   sortId     Float
@@ -116,17 +118,18 @@ model VerifyUserToken {
 }
 
 model UserCompanyRole {
-  id          String        @id @default(uuid())
-  user        User?         @relation(fields: [userId], references: [id])
-  userId      String?
-  role        Role          @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  roleId      String
-  company     Company?      @relation(fields: [companyId], references: [id])
-  companyId   String?
-  status      Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  Invitations Invitations[]
+  id                  String        @id @default(uuid())
+  user                User?         @relation(fields: [userId], references: [id])
+  userId              String?
+  role                Role          @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId              String
+  company             Company?      @relation(fields: [companyId], references: [id])
+  companyId           String?
+  status              Boolean       @default(true)
+  isSuperAdminCreated Boolean       @default(false)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  Invitations         Invitations[]
 }
 
 model Invitations {
@@ -155,10 +158,113 @@ model Company {
   updatedBy       String?
   UserCompanyRole UserCompanyRole[]
   Role            Role[]
+  Device          Device[]
+  Subscription    Subscription[]
+
+  SubscriptionHistory SubscriptionHistory[]
 }
 
 enum InvitationStatus {
   Pending
   Accepted
   Rejected
+}
+
+model Device {
+  id                  String                  @id @default(uuid())
+  macAddress          String                  @unique
+  name                String
+  wifiSsid            String?
+  wifiPassword        String?
+  secrectkey          String                  @default(uuid())
+  status              DeviceStatus            @default(active)
+  lastUpdated         DateTime                @updatedAt
+  createdAt           DateTime                @default(now())
+  subscriptions       Subscription[]
+  connection          DeviceConnectionStatus? @relation(fields: [connectionid], references: [id])
+  connectionid        String?
+  subscriptionHistory SubscriptionHistory[]
+  messages            Message[]
+  user                User                    @relation(fields: [userId], references: [id])
+  userId              String
+  companyId           String?
+  company             Company?                @relation(fields: [companyId], references: [id])
+}
+
+model Subscription {
+  id             String                @id @default(uuid())
+  device         Device                @relation(fields: [deviceId], references: [id])
+  deviceId       String
+  mode           String
+  recurring      Boolean               @default(false)
+  additionalTime String?
+  dueTimestamp   DateTime?
+  history        SubscriptionHistory[]
+  companyId      String
+  company        Company               @relation(fields: [companyId], references: [id])
+}
+
+model SubscriptionHistory {
+  id             String             @id @default(uuid())
+  subscription   Subscription       @relation(fields: [subscriptionId], references: [id])
+  subscriptionId String
+  device         Device             @relation(fields: [deviceId], references: [id])
+  deviceId       String
+  mode           String
+  recurring      Boolean
+  additionalTime String?
+  dueTimestamp   DateTime?
+  action         SubscriptionAction
+  changedBy      User               @relation("ChangedByUser", fields: [changedById], references: [id])
+  changedById    String
+  changedAt      DateTime           @default(now())
+  companyId      String
+  company        Company            @relation(fields: [companyId], references: [id])
+}
+
+model DeviceConnectionStatus {
+  id       String   @id @default(uuid())
+  deviceId String   @unique
+  lastSeen DateTime
+  isOnline Boolean
+
+  Device Device[]
+}
+
+model Message {
+  id             String          @id @default(uuid())
+  deviceId       String
+  category       MessageCategory
+  topic          String
+  payload        String
+  timestamp      DateTime        @default(now())
+  deliveryStatus DeliveryStatus  @default(pending)
+  device         Device          @relation(fields: [deviceId], references: [id])
+
+  @@unique([deviceId, category])
+}
+
+enum DeviceStatus {
+  active
+  inactive
+  suspended
+  maintenance
+}
+
+enum SubscriptionAction {
+  created
+  updated
+  cancelled
+  renewed
+}
+
+enum MessageCategory {
+  wifi
+  subscription
+}
+
+enum DeliveryStatus {
+  pending
+  delivered
+  acknowledged
 }

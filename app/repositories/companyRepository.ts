@@ -80,7 +80,7 @@ const getAllCompaniesWithFilterAndSort = async (
 	if (search) {
 		whereClause.OR = [
 			{ name: { contains: search, mode: 'insensitive' } },
-			{ tpin: { contains: search, mode: 'insensitive' } },
+			{ email: { contains: search, mode: 'insensitive' } },
 		];
 	}
 

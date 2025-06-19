@@ -30,9 +30,15 @@ const loginService = async (req: Request) => {
 
 	const user = await userRepository.getUserByEmail(email);
 	if (!user) {
-		throw new ApiException(ErrorCodes.INVALID_CREDENTIALS);
+		throw new ApiException(ErrorCodes.USER_NOT_FOUND);
 	}
+	const isRoleStatusValidForLogin = user.UserCompanyRole.some(
+		(user) => user.role?.status == true
+	);
 
+	if (!isRoleStatusValidForLogin) {
+		throw new ApiException(ErrorCodes.NOT_ACTIVE);
+	}
 	if (!user.isVerified) {
 		throw new ApiException(ErrorCodes.USER_NOT_VERIFIED);
 	}
@@ -60,7 +66,8 @@ const loginService = async (req: Request) => {
 	let companies: any = [];
 	// let permissions: any = [];
 	let isSuperAdmin = false;
-	let isAdmin=false;
+	let isAdmin = false;
+	let isSuperAdminCreated = false;
 
 	if (user.UserCompanyRole.length > 0) {
 		const companyRole = user.UserCompanyRole.find(
@@ -70,12 +77,13 @@ const loginService = async (req: Request) => {
 		if (companyRole) {
 			companies = await companyRepository.getAllCompanies();
 			isSuperAdmin = companyRole.role.isSuperAdmin;
-			isAdmin=companyRole.role.isAdmin;
+			isAdmin = companyRole.role.isAdmin;
+			isSuperAdminCreated = true
 		} else {
 			companies = [user.UserCompanyRole[0].company];
-			// permissions = user.UserCompanyRole[0].role.Permission;
 			isSuperAdmin = user.UserCompanyRole[0].role.isSuperAdmin;
-			isAdmin=user.UserCompanyRole[0].role.isAdmin;
+			isAdmin = user.UserCompanyRole[0].role.isAdmin;
+			isSuperAdminCreated = user.UserCompanyRole[0].isSuperAdminCreated;
 		}
 	}
 
@@ -91,7 +99,7 @@ const loginService = async (req: Request) => {
 		await tokenRepository.deleteAccessTokenByUser(user.id);
 		const newAccessToken = generateAccessToken({
 			id: user.id,
-			isSuperAdminCreated:user?.isSuperAdminCreated,
+			isSuperAdminCreated: isSuperAdminCreated,
 			email,
 			companyId: companies.length > 0 ? companies[0].id : null,
 			isSuperAdmin,
@@ -110,6 +118,7 @@ const loginService = async (req: Request) => {
 			email,
 			companyId: companies.length > 0 ? companies[0].id : null,
 			isSuperAdmin,
+			isSuperAdminCreated: isSuperAdminCreated,
 			isAdmin,
 		});
 		await tokenRepository.createAccessTokenByUser(user.id, newAccessToken);
@@ -167,7 +176,7 @@ const forgotPassword = async (req: Request) => {
 	const mailOptions = {
 		from: smtpEmail,
 		to: email,
-		subject: 'Reset Password - Pay2Power',
+		subject: 'Reset Password - Serviots',
 		html: emailContent,
 	};
 
@@ -298,7 +307,7 @@ const changePassword = async (req: Request) => {
 	});
 
 	return {
-		message: `Password ${setPassword ? 'set' :'updated'} successfully. Please login to continue.`,
+		message: `Password ${setPassword ? 'set' : 'updated'} successfully. Please login to continue.`,
 	};
 };
 
@@ -327,7 +336,7 @@ const fetchProfile = async (req: RequestExtended) => {
 					id: item.companyId,
 					name: item.company?.name,
 					roleId: item.roleId,
-					roleName : item?.role?.roleName,
+					roleName: item?.role?.roleName,
 					permissions: item.role.Permission,
 				};
 			});
@@ -348,8 +357,12 @@ const fetchProfile = async (req: RequestExtended) => {
 		lastName: user.lastName,
 		image: user.profileImg,
 		companies: companies,
-		 roleName : user.UserCompanyRole[0].role.roleName,
+		roleName: user.UserCompanyRole[0].role.roleName,
 		permissions: _permissions,
+		isSuperAdmin:user.UserCompanyRole[0].role.isSuperAdmin,
+		isAdmin :user.UserCompanyRole[0].role.isAdmin,
+		roleId:user.UserCompanyRole[0].role.id,
+		companyId:req.user.companyId
 	};
 
 	return {
@@ -361,8 +374,7 @@ const fetchProfile = async (req: RequestExtended) => {
 const updateProfile = async (req: RequestExtended) => {
 	const data = {
 		firstName: req.body.firstName,
-		lastName: req.body.lastName,
-		// phone: req.body.phone || null,
+		lastName: req.body.lastName
 	};
 	if (invalidText(req.body.firstName)) {
 		delete data['firstName'];
@@ -429,8 +441,8 @@ const changeCompany = async (req: RequestExtended) => {
 			isSuperAdmin: isSuperAdmin
 				? true
 				: userRole
-				? userRole?.isSuperAdmin
-				: false,
+					? userRole?.isSuperAdmin
+					: false,
 		});
 		await tokenRepository.createAccessTokenByUser(req.user.id, newAccessToken);
 		return {

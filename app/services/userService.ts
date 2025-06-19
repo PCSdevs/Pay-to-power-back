@@ -21,7 +21,7 @@ import { getInvitationEmailUserExistTemplate } from '../template/email/invitatio
 const inviteUserService = async (req: RequestExtended) => {
 	const { email, role, fullName } = req.body;
 
-	const { companyId, id,isSuperAdmin,isSuperAdminCreated } = req.user;
+	const { companyId, id, isSuperAdmin, isSuperAdminCreated } = req.user;
 
 	await companyRepository.validateCompany(companyId);
 
@@ -36,7 +36,7 @@ const inviteUserService = async (req: RequestExtended) => {
 	const user = await userRepository.getAllUserByEmail(_email);
 
 	// Check if role exists
-	const isRoleExist = await roleRepository.getRole(role, companyId);
+	const isRoleExist = await roleRepository.getRole(role, companyId,isSuperAdmin || isSuperAdminCreated ? true : false);
 	if (!isRoleExist) {
 		throw new ApiException(ErrorCodes.INVALID_ROLE_ID);
 	}
@@ -68,13 +68,15 @@ const inviteUserService = async (req: RequestExtended) => {
 		) {
 			addedUser = await userCompanyRoleRepository.updateUserId(
 				user.id,
-				userCompanyRoleWithNullUserId?.id
+				userCompanyRoleWithNullUserId?.id,
+				isRoleExist?.isAdmin ? false : isSuperAdmin || isSuperAdminCreated ? true : false
 			);
 		} else {
 			addedUser = await userCompanyRoleRepository.addUser(
 				user.id,
 				companyId,
-				isRoleExist.id
+				isRoleExist.id,
+				isRoleExist?.isAdmin ? false : isSuperAdmin || isSuperAdminCreated ? true : false
 			);
 		}
 
@@ -107,7 +109,7 @@ const inviteUserService = async (req: RequestExtended) => {
 		const mailOptions = {
 			from: process.env.SMTP_EMAIL,
 			to: email,
-			subject: 'Invitation to join Pay2Power',
+			subject: 'Invitation to join Serviots',
 			html: emailContent,
 		};
 
@@ -122,7 +124,7 @@ const inviteUserService = async (req: RequestExtended) => {
 				fullName: fullName,
 				isVerified: false,
 				createdBy: req.user.id,
-				isSuperAdminCreated: isSuperAdmin || isSuperAdminCreated ? true : false
+				// isSuperAdminCreated: isSuperAdmin || isSuperAdminCreated ? true : false
 			});
 		} else {
 			await userRepository.updateUser(user.id, {
@@ -130,7 +132,7 @@ const inviteUserService = async (req: RequestExtended) => {
 				firstName: fullName ? fullName.split(' ')[0] : '',
 				lastName: fullName ? fullName.split(' ')[1] : '',
 				fullName: fullName,
-				isSuperAdminCreated: isSuperAdmin || isSuperAdminCreated ? true : false
+				// isSuperAdminCreated: isSuperAdmin || isSuperAdminCreated ? true : false
 			});
 			createdUser = user;
 		}
@@ -149,13 +151,15 @@ const inviteUserService = async (req: RequestExtended) => {
 		) {
 			addedUser = await userCompanyRoleRepository.updateUserId(
 				createdUser.id,
-				userCompanyRoleWithNullUserId?.id
+				userCompanyRoleWithNullUserId?.id,
+				isRoleExist?.isAdmin ? false : isSuperAdmin || isSuperAdminCreated ? true : false
 			);
 		} else {
 			addedUser = await userCompanyRoleRepository.addUser(
 				createdUser.id,
 				companyId,
-				isRoleExist.id
+				isRoleExist.id,
+				isRoleExist?.isAdmin ? false : isSuperAdmin || isSuperAdminCreated ? true : false
 			);
 		}
 
@@ -191,7 +195,7 @@ const inviteUserService = async (req: RequestExtended) => {
 		const mailOptions = {
 			from: process.env.SMTP_EMAIL,
 			to: email,
-			subject: 'Invitation to join Pay2Power',
+			subject: 'Invitation to join Serviots',
 			html: emailContent,
 		};
 
@@ -255,7 +259,7 @@ const verifyInvitationToken = async (req: RequestExtended) => {
 
 const getUsersService = async (req: RequestExtended) => {
 	const { page = 1, limit = 10, search, type, sort, filter } = req.query;
-	const { companyId, id,isSuperAdmin,isSuperAdminCreated } = req.user;
+	const { companyId, id, isSuperAdmin, isSuperAdminCreated } = req.user;
 
 	await companyRepository.validateCompany(companyId);
 	await userRepository.validateUser(id);
@@ -269,62 +273,64 @@ const getUsersService = async (req: RequestExtended) => {
 	const offset = (Number(page) - 1) * Number(limit);
 
 	const filterConditions: Record<string, any> = {
-		...(filter !== undefined && { status: filter === 'true' }),
-		...((!isSuperAdmin || !isSuperAdminCreated) && { user :{isSuperAdminCreated: false }}),
-	  };
+		// ...(filter !== undefined && { status: filter === 'true' }),
+		...(filter === 'true' || filter === 'false' ? { status: filter === 'true' } : {}),
+		// ...((!isSuperAdmin || !isSuperAdminCreated) && { user :{isSuperAdminCreated: false }}),
+		...((!isSuperAdmin && !isSuperAdminCreated) ? { isSuperAdminCreated: false }:{}),
+	};
 
 	// Conditions for search
 	const searchCondition = search
 		? {
-				OR: [
-					{
-						firstName: {
-							mode: 'insensitive',
-							contains: search as string,
-						},
+			OR: [
+				{
+					firstName: {
+						mode: 'insensitive',
+						contains: search as string,
 					},
-					{
-						lastName: {
-							mode: 'insensitive',
-							contains: search as string,
-						},
+				},
+				{
+					lastName: {
+						mode: 'insensitive',
+						contains: search as string,
 					},
-					{
-						fullName: {
-							mode: 'insensitive',
-							contains: search as string,
-						},
+				},
+				{
+					fullName: {
+						mode: 'insensitive',
+						contains: search as string,
 					},
-					{
-						email: { contains: search as string, mode: 'insensitive' },
-					},
-					{
-						AND: [
-							{
-								firstName: {
-									mode: 'insensitive',
-									contains: String(search).split(' ')[0],
-								},
+				},
+				{
+					email: { contains: search as string, mode: 'insensitive' },
+				},
+				{
+					AND: [
+						{
+							firstName: {
+								mode: 'insensitive',
+								contains: String(search).split(' ')[0],
 							},
-							{
-								lastName: {
-									mode: 'insensitive',
-									contains: String(search).split(' ')[1],
-								},
+						},
+						{
+							lastName: {
+								mode: 'insensitive',
+								contains: String(search).split(' ')[1],
 							},
-						],
-					},
-				],
-		  }
+						},
+					],
+				},
+			],
+		}
 		: {};
 
 	// Conditions for sort
 	const sortCondition = sort
 		? {
-				orderBy: {
-					[sort as string]: type ?? 'asc',
-				},
-		  }
+			orderBy: {
+				[sort as string]: type ?? 'asc',
+			},
+		}
 		: {};
 
 	const { users, total } = await userRepository.getUsersByCompanyId(
@@ -346,9 +352,10 @@ const getUsersService = async (req: RequestExtended) => {
 			roleName: user.role.roleName,
 			userId: user.userId,
 			isAdmin: user.role.isAdmin,
-			isSuperAdminCreated:user?.user?.isSuperAdminCreated,
+			isSuperAdminCreated: user?.isSuperAdminCreated,
 			invitationStatus: user.Invitations[0]?.invitationStatus,
 			isVerified: user.user?.isVerified,
+			roleStatus: user.role.status
 		};
 	});
 
@@ -524,7 +531,7 @@ const reInviteUserService = async (data: any) => {
 	const mailOptions = {
 		from: process.env.SMTP_EMAIL,
 		to: _user.email,
-		subject: 'Invitation to join Pay2Power',
+		subject: 'Invitation to join Serviots',
 		html: emailContent,
 	};
 

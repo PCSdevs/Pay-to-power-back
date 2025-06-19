@@ -9,7 +9,6 @@ const updatePermission = async (permission: any, roleId: string) => {
 			permissionObjCopy.edit = true;
 			permissionObjCopy.view = true;
 			permissionObjCopy.add = true;
-			permissionObjCopy.approval = true;
 		}
 		if (permissionObjCopy.edit === true) {
 			permissionObjCopy.view = true;
@@ -31,8 +30,7 @@ const updatePermission = async (permission: any, roleId: string) => {
 				delete: permissionObjCopy.delete,
 				edit: permissionObjCopy.edit,
 				view: permissionObjCopy.view,
-				add: permissionObjCopy.add,
-				approval: permissionObjCopy.approval,
+				add: permissionObjCopy.add
 			},
 		});
 	});
@@ -53,7 +51,7 @@ const findAllApproveModulePermission = async (data: { roleId?: string }) => {
 	const permissions = await prisma.permission.findMany({
 		where: {
 			roleId: data.roleId,
-			approval: true,
+			// approval: true,
 		},
 		select: {
 			moduleName: true,

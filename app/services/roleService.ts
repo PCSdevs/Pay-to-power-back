@@ -5,6 +5,7 @@ import { userCompanyRoleRepository } from '../repositories/userCompanyRoleReposi
 import { RequestExtended } from '../interfaces/global';
 import { companyRepository } from '../repositories/companyRepository';
 import { checkPermission } from '../middlewares/isAuthorizedUser';
+import { permission } from 'process';
 
 const createRoleService = async (req: RequestExtended) => {
 	const { roleName, roleDescription, isAdmin } = req.body;
@@ -109,12 +110,52 @@ const isAdmin = async (
 	return false;
 };
 
-const getRoleOptionService = async (req: RequestExtended) => {
-	const { companyId, isSuperAdmin, isSuperAdminCreated  } = req.user;
+const updateRoleService = async (req: RequestExtended) => {
+	const { roleName, roleDescription, roleId } = req.body;
+	const { companyId, id, isSuperAdmin, isSuperAdminCreated } = req.user;
 
 	await companyRepository.validateCompany(companyId);
 
-	const { roles, total } = await roleRepository.getRoleByCompanyId(companyId,(isSuperAdminCreated || isSuperAdmin) ? true : false);
+	//Check permission
+	await checkPermission(id, companyId, {
+		moduleName: 'Roles',
+		permission: ['edit'],
+	});
+
+	const isRoleNameExists = await roleRepository.isSameRoleName(
+		companyId,
+		roleName,
+		roleId
+	);
+	if (isRoleNameExists) {
+		throw new ApiException(ErrorCodes.ROLE_ALREADY_EXISTS);
+	} else {
+		const role = await roleRepository.updateRole(
+			roleName,
+			roleDescription,
+			companyId,
+			roleId
+		);
+		const data = {
+			id: role.id,
+			roleName: role.roleName,
+			roleDescription: role.roleDescription,
+			status: role.status,
+			companyId: role.companyId,
+		};
+		return {
+			data,
+			message: 'successfully updated role.',
+		};
+	}
+};
+
+const getRoleOptionService = async (req: RequestExtended) => {
+	const { companyId, isSuperAdmin, isSuperAdminCreated } = req.user;
+
+	await companyRepository.validateCompany(companyId);
+
+	const { roles, total } = await roleRepository.getRoleByCompanyId(companyId, (isSuperAdminCreated || isSuperAdmin) ? true : false);
 
 	const data = roles
 		?.filter(
@@ -128,14 +169,137 @@ const getRoleOptionService = async (req: RequestExtended) => {
 				status: item.status,
 				companyId: item.companyId,
 				isAdmin: item.isAdmin,
+				isSuperAdminCreated: item.isSuperAdminCreated
 			};
 		});
 
 	return {
 		data: data,
-		total,
-		message: 'Roles fetched successfully.',
+		// total,
+		message: 'Roles options fetched successfully.',
 	};
+};
+
+const deleteRoleService = async (req: RequestExtended) => {
+	const { roleId } = req.body;
+	const { companyId, id, isSuperAdmin, isSuperAdminCreated } = req.user;
+
+	await companyRepository.validateCompany(companyId);
+
+	//Check permission
+	await checkPermission(id, companyId, {
+		moduleName: 'Roles',
+		permission: ['delete'],
+	});
+
+	const isRoleExist = await roleRepository.getRoleById(roleId)
+
+	if (!isRoleExist || isRoleExist?.isSuperAdmin) {
+		throw new ApiException(ErrorCodes.INVALID_ROLE_ID);
+	}
+
+	if (!isSuperAdminCreated && !isSuperAdmin && isRoleExist?.isSuperAdminCreated) {
+		throw new ApiException(ErrorCodes.INVALID_ROLE_ID);
+	}
+
+	const { users, count } = await userCompanyRoleRepository?.getAllUsersByRole({ companyId, roleId })
+
+	if (users.length > 0) {
+		throw new ApiException(ErrorCodes.CANNOT_DELETE_ROLE)
+	}
+
+	await roleRepository?.deleteRole(roleId, companyId)
+
+	return {
+		message: 'Roles deleted successfully.',
+	}
+
+};
+
+const cloneRoleService = async (req: RequestExtended) => {
+	const { cloneRoleId, roleName, roleDescription, isAdmin = false } = req.body;
+	const { companyId, id, isSuperAdmin, isSuperAdminCreated } = req.user;
+
+	await companyRepository.validateCompany(companyId);
+
+	//Check permission
+	await checkPermission(id, companyId, {
+		moduleName: 'Roles',
+		permission: ['add'],
+	});
+
+	const isRoleNameExists = await roleRepository.isSameRoleName(
+		companyId,
+		roleName
+	);
+
+	const targetRole = await roleRepository.getRoleById(cloneRoleId)
+
+	if (!targetRole || targetRole?.isSuperAdmin) {
+		throw new ApiException(ErrorCodes.INVALID_ROLE_ID);
+	}
+	if (!isSuperAdminCreated && !isSuperAdmin && targetRole?.isSuperAdminCreated) {
+		throw new ApiException(ErrorCodes.INVALID_ROLE_ID);
+	}
+
+	if (isRoleNameExists) {
+		throw new ApiException(ErrorCodes.ROLE_ALREADY_EXISTS);
+	} else {
+		const role = await roleRepository.cloneRole(
+			roleName,
+			roleDescription,
+			isAdmin,
+			companyId,
+			id,
+			isSuperAdminCreated || isSuperAdmin,
+			false,
+			targetRole?.Permission
+		);
+		await userCompanyRoleRepository.combineRoleCompany(companyId, role.id);
+		const data = {
+			id: role.id,
+			roleName: role.roleName,
+			roleDescription: role.roleDescription,
+			status: role.status,
+			companyId: role.companyId,
+		};
+		return {
+			data,
+			message: 'successfully clone role.',
+		};
+	}
+
+};
+
+const roleStatusUpdateService = async (req: RequestExtended) => {
+	const { roleId, status } = req.body;
+	const { companyId, id, isSuperAdmin, isSuperAdminCreated } = req.user;
+
+	await companyRepository.validateCompany(companyId);
+
+	//Check permission
+	await checkPermission(id, companyId, {
+		moduleName: 'Roles',
+		permission: ['delete'],
+	});
+
+	const isRoleExist = await roleRepository.getRoleById(roleId)
+
+	if (!isRoleExist || isRoleExist?.isSuperAdmin) {
+		throw new ApiException(ErrorCodes.INVALID_ROLE_ID);
+	}
+
+	if (!isSuperAdminCreated && !isSuperAdmin && isRoleExist?.isSuperAdminCreated) {
+		throw new ApiException(ErrorCodes.INVALID_ROLE_ID);
+	}
+
+
+	await roleRepository?.updateRoleStatus({roleId, companyId, status})
+
+	return {
+		message: 'Role status updated successfully.',
+	}
+
 };
 
 export const roleService = {
@@ -144,4 +308,8 @@ export const roleService = {
 	checkIfUserIsAdmin,
 	isAdmin,
 	getRoleOptionService,
+	updateRoleService,
+	deleteRoleService,
+	cloneRoleService,
+	roleStatusUpdateService
 };

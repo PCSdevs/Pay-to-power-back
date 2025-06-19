@@ -7,7 +7,6 @@ export const DefaultAdminPermissions = [
 		edit: true,
 		delete: true,
 		add: true,
-		approval: true,
 	},
 	{
 		moduleName: 'Roles',
@@ -17,17 +16,31 @@ export const DefaultAdminPermissions = [
 		edit: true,
 		delete: true,
 		add: true,
-		approval: true,
 	},
 	{
 		moduleName: 'Company Setup',
-		sortId: 27,
+		sortId: 3,
 		all: true,
 		view: true,
 		edit: true,
 		delete: true,
 		add: true,
-		approval: true,
+	},	{
+		moduleName: 'Device',
+		sortId: 4,
+		all: true,
+		view: true,
+		edit: true,
+		delete: true,
+		add: true,
+	},{
+		moduleName: 'Subcription',
+		sortId: 5,
+		all: true,
+		view: true,
+		edit: true,
+		delete: true,
+		add: true,
 	},
 	
 ];
@@ -41,7 +54,6 @@ export const DefaultPermissions = [
 		edit: false,
 		delete: false,
 		add: false,
-		approval: false,
 	},
 	{
 		moduleName: 'Roles',
@@ -51,17 +63,32 @@ export const DefaultPermissions = [
 		edit: false,
 		delete: false,
 		add: false,
-		approval: false,
 	},
 	{
 		moduleName: 'Company Setup',
-		sortId: 27,
+		sortId: 3,
 		all: false,
 		view: false,
 		edit: false,
 		delete: false,
 		add: false,
-		approval: false,
+	},
+	{
+		moduleName: 'Device',
+		sortId: 4,
+		all: false,
+		view: false,
+		edit: false,
+		delete: false,
+		add: false,
+	},{
+		moduleName: 'Subcription',
+		sortId: 5,
+		all: false,
+		view: false,
+		edit: false,
+		delete: false,
+		add: false,
 	},
 ];
 
@@ -77,6 +104,6 @@ export const defaultCompanies = [
 	{
 		name: 'Test Company',
 		address: '905',
-		email: 'pp757439@gmail.com',
+		email: 'pratikp@serviots.com',
 	}
 ];
