@@ -3,11 +3,8 @@ import * as path from 'path';
 
 const endpoint = 'a2b4lrdprbci1j-ats.iot.us-east-1.amazonaws.com'; // ✅ Replace with your endpoint
 const certPath = path.resolve('./app/certs/chips.cert.pem');
-console.log("🚀 ~ certPath:", certPath)
 const keyPath = path.resolve('./app/certs/chips.private.key');
-console.log("🚀 ~ keyPath:", keyPath)
 const caPath = path.resolve('./app/certs/root-CA.crt');
-console.log("🚀 ~ caPath:", caPath)
 const clientId = 'basicPubSub';
 const topic = 'sdk/test/python';
 
@@ -39,8 +36,6 @@ async function run() {
   // Publish
   const payload = JSON.stringify({ msg: 'Hello from Node TypeScript' });
   await connection.publish(topic, payload, mqtt.QoS.AtLeastOnce);
-  console.log('🚀 Published:', payload);
-
   // Disconnect after 5 seconds
   setTimeout(async () => {
     await connection.disconnect();

@@ -73,6 +73,9 @@ const getAll = async (companyId:string) => {
 	return await prisma.subscription.findMany({
         where:{
             companyId:companyId
+        },
+        include: {
+            device: true
         }
     });
 };

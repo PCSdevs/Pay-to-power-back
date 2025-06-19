@@ -142,8 +142,9 @@ const getAllSubscriptions = async (req: RequestExtended) => {
         moduleName: 'Subcription',
         permission: ['view'],
     });
-    const subscriptions = await subscriptionRepository.getAll(req?.user.companyId);
-    return subscriptions;
+
+    const subscriptions = await deviceRepository?.getAllDevicesWithSubscriptions(user?.companyId);
+    return {data :subscriptions , message : 'Subscriptions fetched successfully'};
 };
 export const deviceSubscriptionService = {
     createSubscription,

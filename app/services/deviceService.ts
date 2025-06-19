@@ -148,9 +148,10 @@ const assignCompanyToDevice = async (req: RequestExtended) => {
 
 	const {
 		deviceId,
-		comapnyId
+		comapanyId
 	} = req.body;
 
+	
 
 	const existingDevice = await deviceRepository.getDeviceById(deviceId);
 
@@ -158,7 +159,7 @@ const assignCompanyToDevice = async (req: RequestExtended) => {
 		throw new ApiException(ErrorCodes.INVALID_DEVICE_ID)
 	}
 
-	const newDevice = await deviceRepository.assignCompanyToDevice(deviceId,comapnyId);
+	const newDevice = await deviceRepository.assignCompanyToDevice(deviceId,comapanyId);
 
 	return {
 		data: newDevice,

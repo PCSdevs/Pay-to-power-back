@@ -32,7 +32,7 @@ router.put(
 	isAuthenticated,
 	asyncHandler(async (req:RequestExtended, res) => {
 		const result = await deviceSubscriptionService.getAllSubscriptions(req);
-		res.json({ data: result, message: 'Subscriptions fetched successfully' });
+    return result;
 	})
 );
 
