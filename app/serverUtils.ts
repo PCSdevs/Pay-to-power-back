@@ -6,6 +6,8 @@ import { logger } from './utils/logger';
 import { prisma } from './client/prisma';
 import { setTimeout as sleep } from 'timers/promises';
 import { MessageCategory } from '@prisma/client';
+import { deviceRepository } from './repositories/deviceRepository';
+import { userRepository } from './repositories/userRepository';
 
 const EMQX_ENDPOINT = 'hb778060.ala.dedicated.aws.emqxcloud.com';
 const EMQX_PORT = 8883;
@@ -17,6 +19,7 @@ const options: mqtt.IClientOptions = {
     protocol: 'mqtts',
     username: 'pay2power',
     password: 'pay2power',
+    clientId: 'backend-logger-01',
     ca: fs.readFileSync(CA_PATH),
     rejectUnauthorized: true,
 };
@@ -29,27 +32,178 @@ const options: mqtt.IClientOptions = {
 
 const client = mqtt.connect(options);
 
+// client.on('connect', () => {
+//     logger.info('✅ Connected to EMQX Cloud MQTT broker');
+
+
+//     // Subscribing to system topic to detect when devices connect
+//     client.subscribe('$SYS/brokers/+/clients/+/connected', (err) => {
+//         if (err) {
+//             logger.error('❌ Failed to subscribe to connection events');
+//         } else {
+//             logger.info('📡 Subscribed to client connection events');
+//         }
+//     });
+
+
+
+//     // ✅ Subscribe to devices/register topic
+//     client.subscribe('devices/register', (err) => {
+//         if (err) {
+//             logger.error('❌ Failed to subscribe to devices/register');
+//         } else {
+//             logger.info('📡 Subscribed to devices/register');
+//         }
+//     });
+// });
+
+// client.on('error', (error: any) => {
+//     logger.error(`❌ MQTT Error: ${error.message}`);
+// });
+
+// client.on('message', async (topic: any, payload: any) => {
+//     console.log("🚀 ~ client.on ~ payload:", payload)
+//     const data = JSON.parse(payload.toString())
+
+//     // ✅ Handle system topic for device connection
+//     if (topic.includes('/connected')) {
+//         const clientId = topic.split('/')[5]; // $SYS/brokers/+/clients/{clientId}/connected
+//         console.log(`🔌 Device connected: ${clientId}`);
+//         return;
+//     }
+
+
+
+//     if (topic === 'devices/register') {
+//         const { macAddress, name, apiKey } = data;
+//         console.log("🚀 ~ client.on ~ macAddress:", macAddress)
+//         console.log("🚀 ~ client.on ~ secretKey:", apiKey)
+//         console.log("🚀 ~ client.on ~ name:", name)
+
+//         const superuser = await userRepository.getSuperUser();
+
+//         const newDevice = await deviceRepository.createDevice({
+//             macAddress,
+//             name,
+//             // wifiSsid,
+//             // wifiPassword,
+//             // companyId: user.companyId,
+//             userId: superuser!,
+//         });
+
+//         const mqttPayload = {
+//             deviceId: newDevice.id,
+//             macAddress: newDevice.macAddress,
+//             // wifiSsid: newDevice.wifiSsid,
+//             // wifiPassword: newDevice.wifiPassword,
+//             secrectkey: newDevice.secrectkey,
+//             status: 'WiFi credentials updated',
+//         };
+
+//         const mqttTopic = `devices/register`;
+//         await publishMessage(mqttTopic, JSON.stringify(mqttPayload), newDevice.id);
+
+//     }
+//     try {
+//         const data = JSON.parse(payload.toString());
+//         if (data.type === 'acknowledge') {
+//             const { device_id, category } = data;
+//             if (device_id && category) {
+//                 await acknowledgeMessage(device_id, category);
+//             }
+//         }
+//     } catch (err: any) {
+//         logger.error(`❌ Error processing message: ${err.message}`);
+//     }
+// });
+
+
 client.on('connect', () => {
     logger.info('✅ Connected to EMQX Cloud MQTT broker');
+
+    // Subscribe to connection status system topic
+    client.subscribe('$SYS/brokers/+/clients/+/connected', (err) => {
+        if (err) {
+            logger.error('❌ Failed to subscribe to connection events');
+        } else {
+            logger.info('📡 Subscribed to client connection events');
+        }
+    });
+
+    // Subscribe to registration topic
+    client.subscribe('devices/register', (err) => {
+        if (err) {
+            logger.error('❌ Failed to subscribe to devices/register');
+        } else {
+            logger.info('📡 Subscribed to devices/register');
+        }
+    });
 });
 
 client.on('error', (error: any) => {
     logger.error(`❌ MQTT Error: ${error.message}`);
 });
 
-client.on('message', async (topic: any, payload: any) => {
+client.on('message', async (topic: string, payload: Buffer) => {
+    const rawPayload = payload.toString();
+    console.log("🚀 ~ client.on ~ rawPayload:", rawPayload)
+    let data: any;
+
+    // Try parsing the message safely
     try {
-        const data = JSON.parse(payload.toString());
-        if (data.type === 'acknowledge') {
-            const { device_id, category } = data;
-            if (device_id && category) {
-                await acknowledgeMessage(device_id, category);
-            }
-        }
+        data = JSON.parse(rawPayload);
     } catch (err: any) {
-        logger.error(`❌ Error processing message: ${err.message}`);
+        console.log("🚀 ~ client.on ~ err:", err)
+        logger.warn(`⚠️ Skipping non-JSON message on topic ${topic}`);
+        return;
+    }
+
+    // Handle system topic: device connection
+    if (topic.includes('/connected')) {
+        const clientId = topic.split('/')[5];
+        logger.info(`🔌 Device connected: ${clientId}`);
+        return;
+    }
+
+    // Handle device registration
+    if (topic === 'devices/register') {
+        const { macAddress, name, apiKey } = data;
+
+        // if (!macAddress || !name || !apiKey) {
+        //     logger.warn('❌ Incomplete registration payload');
+        //     return;
+        // }
+
+        logger.info(`📥 Registering device: ${macAddress} - ${name}`);
+
+        const superuser = await userRepository.getSuperUser();
+
+        const newDevice = await deviceRepository.createDevice({
+            macAddress,
+            userId: superuser!,
+        });
+
+        const mqttPayload = {
+            deviceId: newDevice.id,
+            macAddress: newDevice.macAddress,
+            secrectkey: newDevice.secrectkey,
+            status: 'WiFi credentials updated',
+        };
+
+        // ⚠️ Use a different topic to respond to the device
+        const responseTopic = `devices/register`;
+        await publishMessage(responseTopic, JSON.stringify(mqttPayload), newDevice.id);
+    }
+
+    // Handle acknowledgment messages
+    if (data.type === 'acknowledge') {
+        const { device_id, category } = data;
+        if (device_id && category) {
+            await acknowledgeMessage(device_id, category);
+        }
     }
 });
+
 
 async function storeMessage(
     deviceId: string,
@@ -135,14 +289,14 @@ async function acknowledgeMessage(deviceId: string, category: string) {
 
 export async function publishMessage(topic: string, message: string, deviceId: string) {
     let category: string | null = null;
-    if (topic.includes('wifi')) category = 'wifi';
-    else if (topic.includes('subscription')) category = 'subscription';
-    else {
-        logger.warn(`Unknown topic type: ${topic}`);
-        return false;
-    }
+    // if (topic.includes('wifi')) category = 'wifi';
+    // else if (topic.includes('subscription')) category = 'subscription';
+    // else {
+    //     logger.warn(`Unknown topic type: ${topic}`);
+    //     return false;
+    // }
 
-    storeMessage(deviceId, category, topic, message);
+    // storeMessage(deviceId, category!, topic, message);
 
     client.publish(topic, message, {}, (err: any) => {
         if (err) logger.error(`❌ Publish failed: ${err.message}`);

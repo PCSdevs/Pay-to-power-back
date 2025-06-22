@@ -1,4 +1,5 @@
 // service/deviceSubscriptionService.ts
+import moment from 'moment';
 import { RequestExtended } from '../interfaces/global';
 import { checkPermission } from '../middlewares/isAuthorizedUser';
 import { deviceRepository } from '../repositories/deviceRepository';
@@ -37,13 +38,15 @@ const createSubscription = async (req: RequestExtended) => {
         companyId: req?.user?.companyId
     });
 
+    const istMoment = moment.utc(dueTimestamp).tz("Asia/Kolkata");
+
     await subscriptionRepository.recordHistory({
         subscriptionId: newSubscription.id,
         deviceId: deviceId,
         mode,
         recurring,
         additionalTime: additionalTime,
-        dueTimestamp: dueTimestamp,
+        dueTimestamp: istMoment.toDate(),
         action: 'created',
         changedById: req.user.id,
         companyId: req?.user?.companyId
@@ -58,7 +61,7 @@ const createSubscription = async (req: RequestExtended) => {
         mode,
         recurring,
         additionalTime: additionalTime?.toString(),
-        dueTimestamp: dueTimestamp?.toString()
+        due_timestamp: dueTimestamp?.toString()
     };
 
     publishMessageWithIST(

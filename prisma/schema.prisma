@@ -173,7 +173,7 @@ enum InvitationStatus {
 model Device {
   id                  String                  @id @default(uuid())
   macAddress          String                  @unique
-  name                String
+  name                String?
   wifiSsid            String?
   wifiPassword        String?
   secrectkey          String                  @default(uuid())

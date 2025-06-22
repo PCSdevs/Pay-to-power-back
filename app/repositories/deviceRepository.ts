@@ -8,7 +8,7 @@ const getDeviceByMac = async (macAddress: string) => {
 
 const createDevice = async (data: {
   macAddress: string;
-  name: string;
+  name?: string;
   wifiSsid?: string;
   wifiPassword?: string;
   companyId?: string;
