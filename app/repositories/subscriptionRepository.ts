@@ -34,7 +34,7 @@ const updateByDeviceId = async (
         mode?: string;
         recurring?: boolean;
         additionalTime?: string;
-        dueTimestamp?: Date;
+        dueTimestamp?: Date | null;
     }
 ) => {
     return await prisma.subscription.updateMany({
@@ -63,7 +63,8 @@ const recordHistory = async (data: {
             dueTimestamp: data.dueTimestamp,
             action: data.action as SubscriptionAction,
             changedById: data.changedById,
-            companyId:data?.companyId
+            companyId:data?.companyId,
+            
         }
     });
 }

@@ -4,7 +4,9 @@ import { RequestExtended } from '../interfaces/global';
 import { checkPermission } from '../middlewares/isAuthorizedUser';
 import { deviceRepository } from '../repositories/deviceRepository';
 import { subscriptionRepository } from '../repositories/subscriptionRepository';
-import { publishMessage, publishMessageWithIST } from '../serverUtils';
+import { publishMessage, publishMessageWithIST, storeMessage } from '../serverUtils';
+import ApiException from '../utils/errorHandler';
+import { ErrorCodes } from '../utils/response';
 
 
 const createSubscription = async (req: RequestExtended) => {
@@ -12,7 +14,7 @@ const createSubscription = async (req: RequestExtended) => {
     const { user } = req
 
     await checkPermission(user.id, user.companyId, {
-        moduleName: 'Subcription',
+        moduleName: 'Subscription',
         permission: ['add'],
     });
 
@@ -25,12 +27,13 @@ const createSubscription = async (req: RequestExtended) => {
     } = req.body;
 
     const device = await deviceRepository.getDeviceById(deviceId);
+
     if (!device) {
-        throw new Error('Device not found');
+        throw new ApiException(ErrorCodes.DEVICE_NOT_FOUND)
     }
 
     const newSubscription = await subscriptionRepository.createSubscription({
-        deviceId,
+        deviceId:deviceId,
         mode,
         recurring,
         additionalTime,
@@ -47,28 +50,33 @@ const createSubscription = async (req: RequestExtended) => {
         recurring,
         additionalTime: additionalTime,
         dueTimestamp: istMoment.toDate(),
-        action: 'created',
+        action: 'CREATED',
         changedById: req.user.id,
         companyId: req?.user?.companyId
     });
 
-    const mqtt_payload = {
+    const mqttPayload = {
         event: 'subscriptionCreated',
-        subscription_id: newSubscription.id,
-        deviceId,
+        subscriptionId: newSubscription.id,
+        deviceId: device?.generatedDeviceId,
         deviceName: device.name,
         deviceMacAddress: device.macAddress,
         mode,
         recurring,
         additionalTime: additionalTime?.toString(),
-        due_timestamp: dueTimestamp?.toString()
+        dueTimestamp: dueTimestamp?.toString(),
+        source:'server'
     };
+    
+    storeMessage(device?.id, `device/${device?.generatedDeviceId}/subscription`, JSON.stringify(mqttPayload));
 
-    publishMessageWithIST(
-        `device/${deviceId}/subscription`,
-        mqtt_payload,
-        String(deviceId)
-    );
+    await publishMessage(`device/${device?.generatedDeviceId}/online`, JSON.stringify({checkingConnection:"isDeviceOnline",source:'server'}));
+
+    // publishMessageWithIST(
+    //     `device/${deviceId}/subscription`,
+    //     mqtt_payload,
+    //     String(deviceId)
+    // );
 
     return {
         message: 'Subscription created successfully',
@@ -88,51 +96,68 @@ const updateSubscription = async (
 ) => {
 
     await checkPermission(user.id, user.companyId, {
-        moduleName: 'Subcription',
+        moduleName: 'Subscription',
         permission: ['edit'],
     });
 
     const existing = await subscriptionRepository.getByDeviceId(deviceId);
+
     if (!existing) {
         throw new Error('Subscription not found');
     }
 
-    await subscriptionRepository.updateByDeviceId(deviceId, {
+   const subscriptionData :any = await subscriptionRepository.updateByDeviceId(deviceId, {
         mode: updateData.mode,
         recurring: updateData.recurring,
         additionalTime: updateData.additionalTime?.toString(),
-        dueTimestamp: updateData.dueTimestamp ? new Date(updateData.dueTimestamp) : undefined,
+        dueTimestamp: updateData.dueTimestamp ? new Date(updateData.dueTimestamp) : null,
     });
 
     // Step 3: Record update history
     await subscriptionRepository.recordHistory({
-        subscriptionId: existing.id,
+        subscriptionId:existing.id,
         deviceId: deviceId,
-        mode: updateData.mode ?? existing.mode,
-        recurring: updateData.recurring ?? existing.recurring,
-        additionalTime: updateData.additionalTime?.toString() ?? existing.additionalTime,
+        mode: updateData.mode ??existing.mode,
+        recurring: updateData.recurring ??existing.recurring,
+        additionalTime: updateData.additionalTime?.toString() ??existing.additionalTime,
         dueTimestamp: updateData.dueTimestamp
             ? new Date(updateData.dueTimestamp)
-            : existing.dueTimestamp,
-        action: 'updated',
-        changedById: user?.userId,
-        companyId: user?.comanyId
+            :existing.dueTimestamp,
+        action: 'UPDATED',
+        changedById: user?.id,
+        companyId: user?.companyId
     });
 
     const final = await subscriptionRepository.getByDeviceId(deviceId);
 
-    await publishMessage(
-        `devices/${deviceId}/subscription`,
-        JSON.stringify({
-            device_id: final?.deviceId,
-            mode: final?.mode,
-            recurring: final?.recurring,
-            additionalTime: final?.additionalTime,
-            dueTimestamp: final?.dueTimestamp?.toISOString?.(),
-            status: 'Subscription updated',
-        }),
-        deviceId
-    );
+    const deviceData= await deviceRepository.getDeviceById(deviceId)
+
+    storeMessage(deviceId, `device/${deviceData?.generatedDeviceId}/subscription`, JSON.stringify({
+        // deviceId: final?.deviceId,
+        mode: final?.mode,
+        recurring: final?.recurring,
+        additionalTime: final?.additionalTime,
+        dueTimestamp: final?.dueTimestamp?.toISOString?.(),
+        status: 'Subscription updated.',
+        code:200
+    }));
+
+
+    await publishMessage(`device/${deviceData?.generatedDeviceId}/online`, JSON.stringify({ checkingConnection: "isDeviceOnline",source:'server' }));
+
+    // await publishMessage(
+    //     `device/${deviceId}/subscription`,
+    //     JSON.stringify({
+    //         // deviceId: final?.deviceId,
+    //         mode: final?.mode,
+    //         recurring: final?.recurring,
+    //         additionalTime: final?.additionalTime,
+    //         dueTimestamp: final?.dueTimestamp?.toISOString?.(),
+    //         status: 'Subscription updated.',
+    //         code:200
+    //     })
+    // );
+
 
     return final;
 };
@@ -142,7 +167,7 @@ const getAllSubscriptions = async (req: RequestExtended) => {
     const { user } = req
 
     await checkPermission(user.id, user.companyId, {
-        moduleName: 'Subcription',
+        moduleName: 'Subscription',
         permission: ['view'],
     });
 

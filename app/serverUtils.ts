@@ -1,13 +1,11 @@
-// src/server.ts
 import mqtt from 'mqtt';
 import fs from 'fs';
 import path from 'path';
 import { logger } from './utils/logger';
-import { prisma } from './client/prisma';
 import { setTimeout as sleep } from 'timers/promises';
-import { MessageCategory } from '@prisma/client';
 import { deviceRepository } from './repositories/deviceRepository';
 import { userRepository } from './repositories/userRepository';
+import { prisma } from './client/prisma';
 
 const EMQX_ENDPOINT = 'hb778060.ala.dedicated.aws.emqxcloud.com';
 const EMQX_PORT = 8883;
@@ -24,120 +22,39 @@ const options: mqtt.IClientOptions = {
     rejectUnauthorized: true,
 };
 
-// const options: mqtt.IClientOptions = {
-//     host: 'test.mosquitto.org',
-//     port: 1883,
-//     protocol: 'mqtt',
-//   };
-
 const client = mqtt.connect(options);
-
-// client.on('connect', () => {
-//     logger.info('✅ Connected to EMQX Cloud MQTT broker');
-
-
-//     // Subscribing to system topic to detect when devices connect
-//     client.subscribe('$SYS/brokers/+/clients/+/connected', (err) => {
-//         if (err) {
-//             logger.error('❌ Failed to subscribe to connection events');
-//         } else {
-//             logger.info('📡 Subscribed to client connection events');
-//         }
-//     });
-
-
-
-//     // ✅ Subscribe to devices/register topic
-//     client.subscribe('devices/register', (err) => {
-//         if (err) {
-//             logger.error('❌ Failed to subscribe to devices/register');
-//         } else {
-//             logger.info('📡 Subscribed to devices/register');
-//         }
-//     });
-// });
-
-// client.on('error', (error: any) => {
-//     logger.error(`❌ MQTT Error: ${error.message}`);
-// });
-
-// client.on('message', async (topic: any, payload: any) => {
-//     console.log("🚀 ~ client.on ~ payload:", payload)
-//     const data = JSON.parse(payload.toString())
-
-//     // ✅ Handle system topic for device connection
-//     if (topic.includes('/connected')) {
-//         const clientId = topic.split('/')[5]; // $SYS/brokers/+/clients/{clientId}/connected
-//         console.log(`🔌 Device connected: ${clientId}`);
-//         return;
-//     }
-
-
-
-//     if (topic === 'devices/register') {
-//         const { macAddress, name, apiKey } = data;
-//         console.log("🚀 ~ client.on ~ macAddress:", macAddress)
-//         console.log("🚀 ~ client.on ~ secretKey:", apiKey)
-//         console.log("🚀 ~ client.on ~ name:", name)
-
-//         const superuser = await userRepository.getSuperUser();
-
-//         const newDevice = await deviceRepository.createDevice({
-//             macAddress,
-//             name,
-//             // wifiSsid,
-//             // wifiPassword,
-//             // companyId: user.companyId,
-//             userId: superuser!,
-//         });
-
-//         const mqttPayload = {
-//             deviceId: newDevice.id,
-//             macAddress: newDevice.macAddress,
-//             // wifiSsid: newDevice.wifiSsid,
-//             // wifiPassword: newDevice.wifiPassword,
-//             secrectkey: newDevice.secrectkey,
-//             status: 'WiFi credentials updated',
-//         };
-
-//         const mqttTopic = `devices/register`;
-//         await publishMessage(mqttTopic, JSON.stringify(mqttPayload), newDevice.id);
-
-//     }
-//     try {
-//         const data = JSON.parse(payload.toString());
-//         if (data.type === 'acknowledge') {
-//             const { device_id, category } = data;
-//             if (device_id && category) {
-//                 await acknowledgeMessage(device_id, category);
-//             }
-//         }
-//     } catch (err: any) {
-//         logger.error(`❌ Error processing message: ${err.message}`);
-//     }
-// });
-
 
 client.on('connect', () => {
     logger.info('✅ Connected to EMQX Cloud MQTT broker');
 
     // Subscribe to connection status system topic
-    client.subscribe('$SYS/brokers/+/clients/+/connected', (err) => {
+    // client.subscribe('$SYS/brokers/+/clients/+/connected', (err) => {
+    //     if (err) {
+    //         logger.error('❌ Failed to subscribe to connection events');
+    //     } else {
+    //         logger.info('📡 Subscribed to client connection events');
+    //     }
+    // });
+
+    // // Subscribe to registration topic
+    // client.subscribe('device/register', (err) => {
+    //     if (err) {
+    //         logger.error('❌ Failed to subscribe to device/register');
+    //     } else {
+    //         logger.info('📡 Subscribed to device/register');
+    //     }
+    // });
+
+    client.subscribe('device/+/+', (err) => {
         if (err) {
-            logger.error('❌ Failed to subscribe to connection events');
+            logger.error('❌ Failed to subscribe to device/');
         } else {
-            logger.info('📡 Subscribed to client connection events');
+            logger.info('📡 Subscribed to device/');
         }
     });
 
-    // Subscribe to registration topic
-    client.subscribe('devices/register', (err) => {
-        if (err) {
-            logger.error('❌ Failed to subscribe to devices/register');
-        } else {
-            logger.info('📡 Subscribed to devices/register');
-        }
-    });
+    client.subscribe('device/+/+');
+
 });
 
 client.on('error', (error: any) => {
@@ -158,6 +75,11 @@ client.on('message', async (topic: string, payload: Buffer) => {
         return;
     }
 
+    if (data?.source === 'server') return;
+    console.log("🚀 ~ client.on ~ parse data:", data)
+
+
+
     // Handle system topic: device connection
     if (topic.includes('/connected')) {
         const clientId = topic.split('/')[5];
@@ -165,139 +87,210 @@ client.on('message', async (topic: string, payload: Buffer) => {
         return;
     }
 
+    const onlineMatch = topic.match(/^device\/([^/]+)\/online$/);
+    if (onlineMatch) {
+        const deviceId = onlineMatch[1];
+        logger.info(`📶 Device is online: ${deviceId}`);
+
+        const deviceData= await deviceRepository?.getDeviceByGeneratedDeviceId(deviceId)
+
+        if(!deviceData){
+            const mqttPayload = {
+                code: 401,
+                status: 'device not found.',
+                source: 'server'
+            };
+
+            const responseTopic = `device/error`;
+            await publishMessage(responseTopic, JSON.stringify(mqttPayload));
+            return
+      
+        }
+
+        const messages = await prisma.message.findFirst({
+            where: {
+                deviceId:deviceData.id,
+                deliveryStatus: 'PENDING',
+            },
+        });
+        if (messages) {
+            const deviceData = await deviceRepository.getDeviceById(messages?.deviceId)
+
+            await publishMessage(messages?.topic, JSON.stringify({
+                ...JSON.parse(messages?.payload),
+                source: 'server',
+              }));
+        }
+    }
+
+    const acknowledgedMatch = topic.match(/^device\/([^/]+)\/acknowledge$/);
+    if (acknowledgedMatch) {
+        const deviceId = acknowledgedMatch[1]; // dynamic value
+        logger.info(`📶 Device is online: ${deviceId}`);
+
+
+        const { topic } = data;
+
+        const deviceData= await deviceRepository?.getDeviceByGeneratedDeviceId(deviceId)
+
+        const sentMessage=  await prisma?.message?.findFirst({
+            where:{
+                deviceId:deviceData?.id,
+                topic,
+                deliveryStatus:"PENDING"
+                
+            }
+        })
+
+        if(sentMessage){
+            await prisma.message?.update({
+                where:{
+                    id:sentMessage.id
+                },
+                data:{
+                    deliveryStatus:'ACKNOWLEDGED'
+                }
+            })
+        }
+
+        const messages = await prisma.message.findFirst({
+            where: {
+                deviceId:deviceData?.id,
+                deliveryStatus: 'PENDING',
+            },
+        });
+        if (messages) {
+            const parsedPayload = JSON.parse(messages?.payload || '{}');
+
+            await publishMessage(messages?.topic, JSON.stringify({...parsedPayload,source:'server'}));
+        }
+    }
+
+
     // Handle device registration
-    if (topic === 'devices/register') {
-        const { macAddress, name, apiKey } = data;
+    if (topic === 'device/register') {
+        const { macAddress, boardNumber } = data;
 
-        // if (!macAddress || !name || !apiKey) {
-        //     logger.warn('❌ Incomplete registration payload');
-        //     return;
-        // }
-
-        logger.info(`📥 Registering device: ${macAddress} - ${name}`);
+        logger.info(`📥 Registering device: ${macAddress}`);
 
         const superuser = await userRepository.getSuperUser();
 
+        const isDeviceExits = await deviceRepository.getDeviceByMac(macAddress)
+
+        if (isDeviceExits) {
+            const mqttPayload = {
+                code: 401,
+                status: 'device with same macAddress already registered.',
+                source:'server'
+            };
+
+            const responseTopic = `device/register`;
+            await publishMessage(responseTopic, JSON.stringify(mqttPayload));
+            return
+        }
+
         const newDevice = await deviceRepository.createDevice({
             macAddress,
-            userId: superuser!,
+            boardNumber,
+            userId: superuser as string,
         });
 
         const mqttPayload = {
-            deviceId: newDevice.id,
+            deviceId: newDevice.generatedDeviceId,
             macAddress: newDevice.macAddress,
-            secrectkey: newDevice.secrectkey,
-            status: 'WiFi credentials updated',
+            secreteKey: newDevice.secreteKey,
+            status: 'Device register successfully.',
+            code: 200,
+            source:'server'
         };
 
         // ⚠️ Use a different topic to respond to the device
-        const responseTopic = `devices/register`;
-        await publishMessage(responseTopic, JSON.stringify(mqttPayload), newDevice.id);
+        const responseTopic = `device/register`;
+        await publishMessage(responseTopic, JSON.stringify(mqttPayload));
     }
 
     // Handle acknowledgment messages
     if (data.type === 'acknowledge') {
         const { device_id, category } = data;
         if (device_id && category) {
-            await acknowledgeMessage(device_id, category);
+            await acknowledgeMessage(device_id, topic);
         }
     }
 });
 
 
-async function storeMessage(
+export async function storeMessage(
     deviceId: string,
-    category: string,
     topic: string,
     payload: string
 ) {
     try {
-        await prisma.message.upsert({
+        const deliveryStatus = 'PENDING';
+
+        const existing = await prisma.message.findFirst({
             where: {
-                deviceId_category: {
-                    deviceId,
-                    category: category as MessageCategory,
-                },
-            },
-            update: {
-                topic,
-                payload,
-                deliveryStatus: 'pending',
-                timestamp: new Date(),
-            },
-            create: {
-                deviceId,
-                category: category as MessageCategory,
-                topic,
-                payload,
-                deliveryStatus: 'pending',
+                deviceId: deviceId,
+                topic: topic,
+                deliveryStatus,
             },
         });
-        logger.info(`✅ Stored message for ${deviceId}, category ${category}`);
+
+        if (existing) {
+            return await prisma.message.update({
+                where: { id: existing.id },
+                data: {
+                    payload: payload,
+                    timestamp: new Date(),
+                },
+            });
+        } else {
+            return await prisma.message.create({
+                data: {
+                    deviceId: deviceId,
+                    topic: topic,
+                    payload: payload,
+                    deliveryStatus,
+                },
+            });
+        }
     } catch (err: any) {
         logger.error(`❌ Failed to store message: ${err.message}`);
     }
 }
 
-// async function updateDeviceStatus(deviceId: string, isOnline: boolean) {
-//   try {
-//     await prisma.deviceStatus.upsert({
-//       where: { deviceId },
-//       update: {
-//         lastSeen: new Date(),
-//         isOnline,
-//       },
-//       create: {
-//         deviceId,
-//         lastSeen: new Date(),
-//         isOnline,
-//       },
-//     });
-//     logger.info(`✅ Updated status for ${deviceId}: ${isOnline ? 'online' : 'offline'}`);
-//   } catch (err:any) {
-//     logger.error(`❌ Failed to update device status: ${err.message}`);
-//   }
-// }
-
 async function getPendingMessages(deviceId: string) {
     return await prisma.message.findMany({
-        where: { deviceId, deliveryStatus: 'pending' },
+        where: { deviceId, deliveryStatus: 'PENDING' },
         select: {
-            category: true,
             topic: true,
             payload: true,
         },
     });
 }
 
-async function acknowledgeMessage(deviceId: string, category: string) {
+async function acknowledgeMessage(deviceId: string, topic: string) {
     try {
         await prisma.message.updateMany({
             where: {
                 deviceId,
-                category: category as MessageCategory,
+                topic: topic,
             },
             data: {
-                deliveryStatus: 'acknowledged',
+                deliveryStatus: 'ACKNOWLEDGED',
             },
         });
-        logger.info(`✅ Acknowledged message for ${deviceId}, category ${category}`);
+        logger.info(`✅ Acknowledged message for ${deviceId}, category ${topic}`);
     } catch (err: any) {
         logger.error(`❌ Acknowledge error: ${err.message}`);
     }
 }
 
-export async function publishMessage(topic: string, message: string, deviceId: string) {
-    let category: string | null = null;
-    // if (topic.includes('wifi')) category = 'wifi';
-    // else if (topic.includes('subscription')) category = 'subscription';
-    // else {
-    //     logger.warn(`Unknown topic type: ${topic}`);
-    //     return false;
+export async function publishMessage(topic: string, message: string) {
+
+    // if (deviceId) {
+    //     storeMessage(deviceId, topic, message);
+
     // }
-
-    // storeMessage(deviceId, category!, topic, message);
-
     client.publish(topic, message, {}, (err: any) => {
         if (err) logger.error(`❌ Publish failed: ${err.message}`);
         else logger.info(`📤 Sent '${message}' to topic '${topic}'`);
@@ -317,7 +310,7 @@ export async function publishMessageWithIST(
     });
     payload.timestamp_ist = now;
     const message = JSON.stringify(payload);
-    return publishMessage(topic, message, deviceId);
+    return publishMessage(topic, message);
 }
 
 // Start publishing loop

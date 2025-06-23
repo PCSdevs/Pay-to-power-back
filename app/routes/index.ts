@@ -7,7 +7,7 @@ import roleRoutes from "./roleRoutes";
 import userRoutes from "./userRoutes";
 import companyRoutes from "./companyRoutes";
 import deviceRoutes from "./deviceRoutes";
-import subcriptionRoutes from "./subscriptionRoutes";
+import subscriptionRoutes from "./subscriptionRoutes";
 
 const router = express.Router();
 
@@ -19,7 +19,7 @@ router.use('/api/role', roleRoutes);
 router.use('/api/company', companyRoutes);
 router.use('/api/permission', permissionRoutes);
 router.use('/api/devices', deviceRoutes);
-router.use('/api/subscriptions', subcriptionRoutes);
+router.use('/api/subscriptions', subscriptionRoutes);
 
 router.use(
   "/health",

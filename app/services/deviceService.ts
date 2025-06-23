@@ -1,7 +1,7 @@
 import { RequestExtended } from '../interfaces/global';
 import { deviceRepository } from '../repositories/deviceRepository';
 import moment from 'moment-timezone';
-import { publishMessage } from '../serverUtils';
+import { publishMessage, storeMessage } from '../serverUtils';
 import ApiException from '../utils/errorHandler';
 import { ErrorCodes } from '../utils/response';
 import { checkPermission } from '../middlewares/isAuthorizedUser';
@@ -17,7 +17,7 @@ const registerDevice = async (req: RequestExtended) => {
 
 	const {
 		macAddress,
-		name,
+		boardNumber,
 		// wifiSsid,
 		// wifiPassword,
 	} = req.body;
@@ -31,24 +31,21 @@ const registerDevice = async (req: RequestExtended) => {
 
 	const newDevice = await deviceRepository.createDevice({
 		macAddress,
-		name,
-		// wifiSsid,
-		// wifiPassword,
-		// companyId: user.companyId,
+		boardNumber,
 		userId: user.id,
 	});
 
 	const mqttPayload = {
-		deviceId: newDevice.id,
+		deviceId: newDevice.generatedDeviceId,
 		macAddress: newDevice.macAddress,
-		// wifiSsid: newDevice.wifiSsid,
-		// wifiPassword: newDevice.wifiPassword,
-		secrectkey: newDevice.secrectkey,
-		status: 'WiFi credentials updated',
+		secreteKey: newDevice.secreteKey,
+		status: 'Device register successfully.',
+		code: 200,
+		source:'server'
 	};
+	storeMessage(newDevice?.id, `device/${newDevice.generatedDeviceId}/wifi`, JSON.stringify(mqttPayload))
 
-	const mqttTopic = `devices/${newDevice.id}/wifi`;
-	await publishMessage(mqttTopic, JSON.stringify(mqttPayload), newDevice.id);
+	await publishMessage(`device/${newDevice?.generatedDeviceId}/online`, JSON.stringify({ checkingConnection: "isDeviceOnline",source:'server' }));
 
 
 	return {
@@ -73,36 +70,30 @@ const updateDevice = async (
 	const existingDevice = await deviceRepository.getDeviceById(deviceId);
 
 	if (!existingDevice) {
-		throw { statusCode: 404, message: 'Device not found' };
+		throw new ApiException(ErrorCodes.DEVICE_NOT_FOUND)
 	}
 
 	const updateDeviceData = {
 		macAddress: updateData.macAddress,
 		name: updateData?.name,
-		// categoryId: category_id,
-		// officeId: office_id,
-		wifiSsid: updateData.wifiSsid,
-		wifiPassword: updateData.wifiPassword,
 		companyId: req.user.companyId,
-		userId: req.user.id, // required
-		// connectionid: optional if you have it
+		userId: req.user.id,
 	}
 
 
 	const updatedDevice = await deviceRepository.updateDevice(deviceId, updateDeviceData);
 
-	if (updateData.wifiSsid || updateData.wifiPassword) {
-		const mqttPayload = {
-			device_id: deviceId,
-			macAddress: existingDevice.macAddress,
-			wifiSsid: updateData.wifiSsid,
-			wifiPassword: updateData.wifiPassword,
-			status: 'WiFi credentials updated',
-		};
+	// if (updateData.wifiSsid || updateData.wifiPassword) {
+	// 	const mqttPayload = {
+	// 		deviceId: updatedDevice?.generatedDeviceId,
+	// 		macAddress: existingDevice.macAddress,
+	// 		status: 'WiFi credentials updated',
+	// 		code:200
+	// 	};
 
-		const mqttTopic = `devices/${deviceId}/wifi`;
-		await publishMessage(mqttTopic, JSON.stringify(mqttPayload), deviceId);
-	}
+	// 	const mqttTopic = `device/${deviceId}/wifi`;
+	// 	await publishMessage(mqttTopic, JSON.stringify(mqttPayload), updatedDevice.id);
+	// }
 
 	return {
 		data: updatedDevice,
@@ -125,9 +116,8 @@ const getAllDevices = async (req: RequestExtended) => {
 	const currentTime = moment().tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');
 
 	const sanitizedDevices = devices.map((device) => {
-		const { wifiSsid, wifiPassword, ...safeData } = device;
 		return {
-			...safeData,
+			...device,
 			current_time: currentTime,
 		};
 	});
@@ -143,26 +133,34 @@ const assignCompanyToDevice = async (req: RequestExtended) => {
 	const { user } = req
 	await checkPermission(user.id, user.companyId, {
 		moduleName: 'Device',
-		permission: ['add','edit'],
+		permission: ['add', 'edit'],
 	});
 
 	const {
-		deviceId,
-		comapanyId
+		deviceIds,
+		companyId
 	} = req.body;
 
-	
 
-	const existingDevice = await deviceRepository.getDeviceById(deviceId);
-
-	if (!existingDevice) {
-		throw new ApiException(ErrorCodes.INVALID_DEVICE_ID)
+	if (!Array.isArray(deviceIds) || deviceIds.length === 0) {
+		throw new ApiException(ErrorCodes.BAD_REQUEST);
 	}
 
-	const newDevice = await deviceRepository.assignCompanyToDevice(deviceId,comapanyId);
+	const results: any[] = [];
 
+
+	for (const deviceId of deviceIds) {
+		const existingDevice = await deviceRepository.getDeviceById(deviceId);
+
+		if (!existingDevice) {
+			throw new ApiException(ErrorCodes.INVALID_DEVICE_ID);
+		}
+
+		const updatedDevice = await deviceRepository.assignCompanyToDevice(deviceId, companyId);
+		results.push(updatedDevice);
+	}
 	return {
-		data: newDevice,
+		data: results,
 		message: 'Device assigned successfully.',
 	};
 

@@ -1,3 +1,5 @@
+import { prisma } from "../client/prisma";
+
 export function invalidText(value: any) {
   return (
     value == null ||
@@ -22,4 +24,20 @@ export const disablePermissions = (permissions: any) => {
 	return _permissions;
 };
 
+export const generateUnique3CharId = async (): Promise<string> => {
+	const maxAttempts = 10;
+  
+	for (let i = 0; i < maxAttempts; i++) {
+	  const id = Math.random().toString(36).substring(2, 5).toUpperCase();
+	  const exists = await prisma.device.findUnique({ where: { generatedDeviceId: id } });
+  
+	  if (!exists) return id;
+	}
+  
+	throw new Error('Failed to generate unique 3-character ID after multiple attempts');
+  };
+  
+  export const generate7CharKey = () => Math.random().toString(36).substring(2, 9).toUpperCase();
 
+
+  

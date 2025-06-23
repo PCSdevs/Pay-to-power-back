@@ -1,4 +1,6 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../client/prisma';
+import { generate7CharKey, generateUnique3CharId } from '../utils/utils';
 
 const getDeviceByMac = async (macAddress: string) => {
   return await prisma.device.findUnique({
@@ -8,20 +10,34 @@ const getDeviceByMac = async (macAddress: string) => {
 
 const createDevice = async (data: {
   macAddress: string;
-  name?: string;
-  wifiSsid?: string;
-  wifiPassword?: string;
-  companyId?: string;
-  userId: string;
+  boardNumber: string;
+  userId: string; // required
 }) => {
+
+  const generatedDeviceId = await generateUnique3CharId();
+  const secreteKey = generate7CharKey();
+
   return await prisma.device.create({
-    data: data
+    data: {
+      macAddress: data.macAddress,
+      boardNumber:data.boardNumber,
+      userId: data.userId,
+      generatedDeviceId:generatedDeviceId ,
+      secreteKey:secreteKey,
+    } as Prisma.DeviceUncheckedCreateInput,
   });
 };
+
 
 const getDeviceById = async (id: string) => {
   return await prisma.device.findUnique({
     where: { id },
+  });
+};
+
+const getDeviceByGeneratedDeviceId = async (id: string) => {
+  return await prisma.device.findUnique({
+    where: { generatedDeviceId: id },
   });
 };
 
@@ -78,5 +94,6 @@ export const deviceRepository = {
   updateDevice,
   getAllDevices,
   assignCompanyToDevice,
-  getAllDevicesWithSubscriptions
+  getAllDevicesWithSubscriptions,
+  getDeviceByGeneratedDeviceId
 };

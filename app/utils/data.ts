@@ -34,7 +34,7 @@ export const DefaultAdminPermissions = [
 		delete: true,
 		add: true,
 	},{
-		moduleName: 'Subcription',
+		moduleName: 'Subscription',
 		sortId: 5,
 		all: true,
 		view: true,
@@ -82,7 +82,7 @@ export const DefaultPermissions = [
 		delete: false,
 		add: false,
 	},{
-		moduleName: 'Subcription',
+		moduleName: 'Subscription',
 		sortId: 5,
 		all: false,
 		view: false,
