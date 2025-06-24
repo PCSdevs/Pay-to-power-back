@@ -4,6 +4,7 @@ import { isAuthenticated } from '../middlewares/authMiddleware';
 // import { deviceService } from '../services/deviceService';
 import { RequestExtended } from '../interfaces/global';
 import { deviceService } from '../services/deviceService';
+import { assignCompanyToDevicesValidationRules } from '../helpers/validators';
 
 const router = express.Router();
 
@@ -37,6 +38,7 @@ router.post(
 router.post(
   '/assign-company',
   isAuthenticated,
+  assignCompanyToDevicesValidationRules,
   asyncHandler(async (req: RequestExtended, res) => {
     const result = await deviceService.assignCompanyToDevice(req);
     return result;

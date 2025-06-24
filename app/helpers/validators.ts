@@ -134,3 +134,19 @@ export const roleStatusUpdateValidationRules = [
 		.isBoolean().withMessage('Status must be a boolean')
 		.not().isEmpty().withMessage('Status is required'),
 ];
+
+export const assignCompanyToDevicesValidationRules = [
+	body('deviceIds')
+	  .isArray({ min: 1 })
+	  .withMessage('deviceIds must be a non-empty array'),
+  
+	body('deviceIds.*')
+	  .isString()
+	  .notEmpty()
+	  .withMessage('Each deviceId must be a non-empty string'),
+  
+	body('companyId')
+	  .isString()
+	  .notEmpty()
+	  .withMessage('companyId is required'),
+  ];
