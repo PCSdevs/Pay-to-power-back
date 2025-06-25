@@ -20,25 +20,25 @@ client.on('connect', () => {
 
 
   // ✅ Send registration payload (optional)
-  // const payload = {
-  //   macAddress: '11:22:33:44:55:66',
-  //   boardNumber: 'u7798'
-  // };
+  const payload = {
+    macAddress: '11:22:33:44:55:69',
+    boardNumber: 'u7799'
+  };
 
   
 
-  // client.publish('device/register', JSON.stringify(payload), {}, () => {
-  //   console.log('✅ Published registration message');
-  //   // Don't end() here — let it stay connected for the server to detect
-  // });
-
-  const payload = {
-    isDeviceOnline:true
-  };
-    client.publish('device/1HB/online', JSON.stringify(payload), {}, () => {
-    console.log('✅ Published Online Message');
+  client.publish('device/register', JSON.stringify(payload), {}, () => {
+    console.log('✅ Published registration message');
     // Don't end() here — let it stay connected for the server to detect
   });
+
+  // const payload = {
+  //   isDeviceOnline:true
+  // };
+  //   client.publish('device/1HB/online', JSON.stringify(payload), {}, () => {
+  //   console.log('✅ Published Online Message');
+  //   // Don't end() here — let it stay connected for the server to detect
+  // });
 });
 
 // Optional: disconnect gracefully after a while (if needed)

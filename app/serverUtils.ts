@@ -53,6 +53,15 @@ client.on('connect', () => {
         }
     });
 
+
+    client.subscribe('device/+', (err) => {
+        if (err) {
+            logger.error('❌ Failed to subscribe to device/');
+        } else {
+            logger.info('📡 Subscribed to device/');
+        }
+    });
+
     client.subscribe('device/+/+');
 
 });
