@@ -150,3 +150,40 @@ export const assignCompanyToDevicesValidationRules = [
 	  .notEmpty()
 	  .withMessage('companyId is required'),
   ];
+
+export const hotspotDeviceValidationRules = [
+  body('deviceId')
+    .isString()
+    .notEmpty()
+    .withMessage('deviceId is required'),
+
+  body('hotspotId')
+    .isString()
+    .notEmpty()
+    .withMessage('hotspotId is required'),
+
+  body('hotspotPassword')
+    .isString()
+    .notEmpty()
+    .withMessage('hotspotPassword is required'),
+
+  body('clientId')
+    .isString()
+    .notEmpty()
+    .withMessage('clientId is required'),
+
+  body('clientPassword')
+    .isString()
+    .notEmpty()
+    .withMessage('clientPassword is required'),
+
+  body('adminId')
+    .isString()
+    .notEmpty()
+    .withMessage('adminId is required'),
+
+  body('adminPassword')
+    .isString()
+    .notEmpty()
+    .withMessage('adminPassword is required'),
+];
