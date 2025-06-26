@@ -41,11 +41,11 @@ const registerDevice = async (req: RequestExtended) => {
 		secreteKey: newDevice.secreteKey,
 		status: 'Device register successfully.',
 		code: 200,
-		source:'server'
+		source: 'server'
 	};
 	storeMessage(newDevice?.id, `device/${newDevice.generatedDeviceId}/wifi`, JSON.stringify(mqttPayload))
 
-	await publishMessage(`device/${newDevice?.generatedDeviceId}/online`, JSON.stringify({ checkingConnection: "isDeviceOnline",source:'server' }));
+	await publishMessage(`device/${newDevice?.generatedDeviceId}/online`, JSON.stringify({ checkingConnection: "isDeviceOnline", source: 'server' }));
 
 
 	return {
@@ -166,9 +166,47 @@ const assignCompanyToDevice = async (req: RequestExtended) => {
 	};
 
 }
+
+const addClientModeToDevice = async (req: RequestExtended) => {
+	const { user } = req
+	const { deviceId, hotspotId, hotspotPassword, clientId, clientPassword, adminId, adminPassword } = req.body
+
+	await checkPermission(user.id, user.companyId, {
+		moduleName: 'Device',
+		permission: ['edit'],
+	});
+
+	// const { isSuperAdmin } = user
+
+	//need to hash or not   ??
+
+	const deviceData = await deviceRepository.updateDevice(deviceId, { hotspotId, hotspotPassword, clientId, clientPassword, adminId, adminPassword })
+
+	const mqttPayload = {
+		apId: deviceData.hotspotId,
+		apPass: deviceData.hotspotPassword,
+		clientId: deviceData.clientId,
+		clientPass: deviceData.clientPassword,
+		adminId: deviceData.hotspotId,
+		adminPass: deviceData.adminPassword,
+		status: 'Device clientMode ON successfully.',
+		code: 200,
+		source: 'server'
+	};
+
+	storeMessage(deviceId, `device/${deviceData.generatedDeviceId}/clientMode`, JSON.stringify(mqttPayload))
+
+	await publishMessage(`device/${deviceData?.generatedDeviceId}/online`, JSON.stringify({ checkingConnection: "isDeviceOnline", source: 'server' }));
+
+	return {
+		data: deviceData,
+		message: 'Devices updated successfully successfully',
+	};
+};
 export const deviceService = {
 	registerDevice,
 	updateDevice,
 	getAllDevices,
-	assignCompanyToDevice
+	assignCompanyToDevice,
+	addClientModeToDevice
 };

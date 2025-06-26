@@ -178,6 +178,13 @@ model Device {
   generatedDeviceId   String                @unique
   name                String?
   secreteKey          String 
+  isClientModeOn      Boolean               @default(false)
+  hotspotId           String?
+  hotspotPassword     String?
+  clientId            String?
+  clientPassword      String?
+  adminId             String?
+  adminPassword       String?
   lastUpdated         DateTime              @updatedAt
   createdAt           DateTime              @default(now())
   subscriptions       Subscription[]

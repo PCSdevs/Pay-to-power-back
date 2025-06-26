@@ -66,4 +66,13 @@ router.get(
   })
 );
 
+router.post(
+  '/client-mode',
+  isAuthenticated,
+  asyncHandler(async (req: RequestExtended, res) => {
+    const result = await deviceService.addClientModeToDevice(req);
+    res.json(result);
+  })
+);
+
 export default router;

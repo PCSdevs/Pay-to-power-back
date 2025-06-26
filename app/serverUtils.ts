@@ -112,7 +112,7 @@
 //             const responseTopic = `device/error`;
 //             await publishMessage(responseTopic, JSON.stringify(mqttPayload));
 //             return
-      
+
 //         }
 
 //         const messages = await prisma.message.findFirst({
@@ -146,7 +146,7 @@
 //                 deviceId:deviceData?.id,
 //                 topic,
 //                 deliveryStatus:"PENDING"
-                
+
 //             }
 //         })
 
@@ -434,6 +434,17 @@ client.on('message', async (topic: string, payload: Buffer) => {
             return;
         }
 
+        if (deviceData?.isClientModeOn) {
+            await prisma.device.update({
+                where: {
+                    generatedDeviceId: deviceData.id
+                },
+                data: {
+                    isClientModeOn: false
+                }
+            })
+        }
+
         const messages = await prisma.message.findFirst({
             where: {
                 deviceId: deviceData.id,
@@ -481,6 +492,17 @@ client.on('message', async (topic: string, payload: Buffer) => {
                 where: { id: sentMessage.id },
                 data: { deliveryStatus: 'ACKNOWLEDGED' }
             });
+
+            if (topic.includes('/clientMode')) {
+                await prisma.device.update({
+                    where: {
+                        generatedDeviceId: deviceData.id
+                    },
+                    data: {
+                        isClientModeOn: true
+                    }
+                })
+            }
         }
 
         const messages = await prisma.message.findFirst({
