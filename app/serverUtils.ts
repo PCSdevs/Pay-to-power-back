@@ -410,18 +410,27 @@ client.on('message', async (topic: string, payload: Buffer) => {
     if (data?.source === 'server') return;
     console.log("🚀 ~ client.on ~ parse data:", data);
 
-    // if (topic.includes('/connected')) {
-    //     const clientId = topic.split('/')[5];
-    //     logger.info(`🔌 Device connected: ${clientId}`);
-    //     return;
-    // }
 
     const onlineMatch = topic.match(/^device\/([^/]+)\/online$/);
     if (onlineMatch) {
         const deviceId = onlineMatch[1];
         logger.info(`📶 Device is online: ${deviceId}`);
 
+        const { secreteKey } = data
         const deviceData = await deviceRepository?.getDeviceByGeneratedDeviceId(deviceId);
+
+        // if (deviceData?.secreteKey !== secreteKey) {
+
+        //     const mqttPayload = {
+        //         code: 401,
+        //         status: 'invalid secreteKey.',
+        //         source: 'server'
+        //     };
+
+        //     const responseTopic = `device/error`;
+        //     await publishMessage(responseTopic, JSON.stringify(mqttPayload));
+        //     return;
+        // }
         if (!deviceData) {
             const mqttPayload = {
                 code: 401,
@@ -465,9 +474,36 @@ client.on('message', async (topic: string, payload: Buffer) => {
         const deviceId = acknowledgedMatch[1];
         logger.info(`📶 Device is online: ${deviceId}`);
 
-        const { topic } = data;
+        const { topic, secreteKey } = data;
+
+        if (
+            typeof topic !== 'string' || topic.trim() === '' 
+          ) {
+            const mqttPayload = {
+                code: 401,
+                status: 'topic is required.',
+                source: 'server'
+            };
+
+            const responseTopic = `device/error`;
+            await publishMessage(responseTopic, JSON.stringify(mqttPayload));
+            return;
+          }
 
         const deviceData = await deviceRepository?.getDeviceByGeneratedDeviceId(deviceId);
+
+        // if (deviceData?.secreteKey !== secreteKey) {
+
+        //     const mqttPayload = {
+        //         code: 401,
+        //         status: 'invalid secreteKey.',
+        //         source: 'server'
+        //     };
+
+        //     const responseTopic = `device/error`;
+        //     await publishMessage(responseTopic, JSON.stringify(mqttPayload));
+        //     return;
+        // }
         if (!deviceData) {
             const mqttPayload = {
                 code: 401,
@@ -479,6 +515,7 @@ client.on('message', async (topic: string, payload: Buffer) => {
             await publishMessage(responseTopic, JSON.stringify(mqttPayload));
             return;
         }
+
         const sentMessage = await prisma?.message?.findFirst({
             where: {
                 deviceId: deviceData?.id,
@@ -536,6 +573,22 @@ client.on('message', async (topic: string, payload: Buffer) => {
             await publishMessage(responseTopic, JSON.stringify(mqttPayload));
             return;
         }
+
+        if (
+            typeof macAddress !== 'string' || macAddress.trim() === '' ||
+            typeof boardNumber !== 'string' || boardNumber.trim() === ''
+          ) {
+            const mqttPayload = {
+                code: 401,
+                status: 'macAddress and boardNumber both required.',
+                source: 'server'
+            };
+
+            const responseTopic = `device/error`;
+            await publishMessage(responseTopic, JSON.stringify(mqttPayload));
+            return;
+          }
+
 
         const newDevice = await deviceRepository.createDevice({
             macAddress,

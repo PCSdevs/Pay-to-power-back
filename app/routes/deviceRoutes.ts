@@ -4,7 +4,7 @@ import { isAuthenticated } from '../middlewares/authMiddleware';
 // import { deviceService } from '../services/deviceService';
 import { RequestExtended } from '../interfaces/global';
 import { deviceService } from '../services/deviceService';
-import { assignCompanyToDevicesValidationRules } from '../helpers/validators';
+import { assignCompanyToDevicesValidationRules, hotspotDeviceValidationRules } from '../helpers/validators';
 
 const router = express.Router();
 
@@ -69,6 +69,7 @@ router.get(
 router.post(
   '/client-mode',
   isAuthenticated,
+  hotspotDeviceValidationRules,
   asyncHandler(async (req: RequestExtended, res) => {
     const result = await deviceService.addClientModeToDevice(req);
     res.json(result);
