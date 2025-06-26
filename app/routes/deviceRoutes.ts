@@ -8,24 +8,6 @@ import { assignCompanyToDevicesValidationRules } from '../helpers/validators';
 
 const router = express.Router();
 
-// router.post(
-//   '/device-categories',
-//   isAuthenticated,
-//   asyncHandler(async (req:RequestExtended, res) => {
-//     const result = await deviceService.createDeviceCategory(req);
-//     return result;
-//   })
-// );
-
-// router.get(
-//   '/device-categories',
-//   isAuthenticated,
-//   asyncHandler(async (req:RequestExtended, res) => {
-//     const result = await deviceService.listDeviceCategories(req);
-//     return result;
-//   })
-// );
-
 router.post(
   '/register',
   isAuthenticated,

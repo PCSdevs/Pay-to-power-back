@@ -200,7 +200,7 @@ const addClientModeToDevice = async (req: RequestExtended) => {
 
 	return {
 		data: deviceData,
-		message: 'Devices updated successfully successfully',
+		message: 'Devices updated successfully',
 	};
 };
 export const deviceService = {
