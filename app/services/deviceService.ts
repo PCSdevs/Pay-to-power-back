@@ -41,11 +41,11 @@ const registerDevice = async (req: RequestExtended) => {
 		secreteKey: newDevice.secreteKey,
 		status: 'Device register successfully.',
 		code: 200,
-		source:'server'
+		source: 'server'
 	};
 	storeMessage(newDevice?.id, `device/${newDevice.generatedDeviceId}/wifi`, JSON.stringify(mqttPayload))
 
-	await publishMessage(`device/${newDevice?.generatedDeviceId}/online`, JSON.stringify({ checkingConnection: "isDeviceOnline",source:'server' }));
+	await publishMessage(`device/${newDevice?.generatedDeviceId}/online`, JSON.stringify({ checkingConnection: "isDeviceOnline", source: 'server' }));
 
 
 	return {
@@ -139,8 +139,6 @@ const assignCompanyToDevice = async (req: RequestExtended) => {
 		deviceIds,
 		companyId
 	} = req.body;
-	console.log("🚀 ~ assignCompanyToDevice ~ req.body:", req.body)
-
 
 	if (!Array.isArray(deviceIds) || deviceIds.length === 0) {
 		throw new ApiException(ErrorCodes.BAD_REQUEST);
@@ -151,8 +149,6 @@ const assignCompanyToDevice = async (req: RequestExtended) => {
 
 	for (const deviceId of deviceIds) {
 		const existingDevice = await deviceRepository.getDeviceById(deviceId);
-		console.log("🚀 ~ assignCompanyToDevice ~ existingDevice:", existingDevice)
-
 		if (!existingDevice) {
 			throw new ApiException(ErrorCodes.INVALID_DEVICE_ID);
 		}
@@ -166,9 +162,47 @@ const assignCompanyToDevice = async (req: RequestExtended) => {
 	};
 
 }
+
+const addClientModeToDevice = async (req: RequestExtended) => {
+	const { user } = req
+	const { deviceId, hotspotId, hotspotPassword, clientId, clientPassword, adminId, adminPassword } = req.body
+
+	await checkPermission(user.id, user.companyId, {
+		moduleName: 'Device',
+		permission: ['edit'],
+	});
+
+	// const { isSuperAdmin } = user
+
+	//need to hash or not   ??
+
+	const deviceData = await deviceRepository.updateDevice(deviceId, { hotspotId, hotspotPassword, clientId, clientPassword, adminId, adminPassword })
+
+	const mqttPayload = {
+		apId: deviceData.hotspotId,
+		apPass: deviceData.hotspotPassword,
+		clientId: deviceData.clientId,
+		clientPass: deviceData.clientPassword,
+		adminId: deviceData.hotspotId,
+		adminPass: deviceData.adminPassword,
+		status: 'Device clientMode ON successfully.',
+		code: 200,
+		source: 'server'
+	};
+
+	storeMessage(deviceId, `device/${deviceData.generatedDeviceId}/clientMode`, JSON.stringify(mqttPayload))
+
+	await publishMessage(`device/${deviceData?.generatedDeviceId}/online`, JSON.stringify({ checkingConnection: "isDeviceOnline", source: 'server' }));
+
+	return {
+		data: deviceData,
+		message: 'Devices updated successfully',
+	};
+};
 export const deviceService = {
 	registerDevice,
 	updateDevice,
 	getAllDevices,
-	assignCompanyToDevice
+	assignCompanyToDevice,
+	addClientModeToDevice
 };

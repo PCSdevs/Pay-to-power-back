@@ -4,27 +4,9 @@ import { isAuthenticated } from '../middlewares/authMiddleware';
 // import { deviceService } from '../services/deviceService';
 import { RequestExtended } from '../interfaces/global';
 import { deviceService } from '../services/deviceService';
-import { assignCompanyToDevicesValidationRules } from '../helpers/validators';
+import { assignCompanyToDevicesValidationRules, hotspotDeviceValidationRules } from '../helpers/validators';
 
 const router = express.Router();
-
-// router.post(
-//   '/device-categories',
-//   isAuthenticated,
-//   asyncHandler(async (req:RequestExtended, res) => {
-//     const result = await deviceService.createDeviceCategory(req);
-//     return result;
-//   })
-// );
-
-// router.get(
-//   '/device-categories',
-//   isAuthenticated,
-//   asyncHandler(async (req:RequestExtended, res) => {
-//     const result = await deviceService.listDeviceCategories(req);
-//     return result;
-//   })
-// );
 
 router.post(
   '/register',
@@ -62,6 +44,16 @@ router.get(
   isAuthenticated,
   asyncHandler(async (req: RequestExtended, res) => {
     const result = await deviceService.getAllDevices(req);
+    res.json(result);
+  })
+);
+
+router.post(
+  '/client-mode',
+  isAuthenticated,
+  hotspotDeviceValidationRules,
+  asyncHandler(async (req: RequestExtended, res) => {
+    const result = await deviceService.addClientModeToDevice(req);
     res.json(result);
   })
 );
