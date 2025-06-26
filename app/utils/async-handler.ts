@@ -10,8 +10,7 @@ const asyncHandler =
   ) =>
   async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     const errors = validationResult(req);
-    console.log("Error: ", errors);
-
+  
     try {
       if (!errors.isEmpty()) {
         throw new ApiException({

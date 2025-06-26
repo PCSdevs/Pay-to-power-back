@@ -139,8 +139,6 @@ const assignCompanyToDevice = async (req: RequestExtended) => {
 		deviceIds,
 		companyId
 	} = req.body;
-	console.log("🚀 ~ assignCompanyToDevice ~ req.body:", req.body)
-
 
 	if (!Array.isArray(deviceIds) || deviceIds.length === 0) {
 		throw new ApiException(ErrorCodes.BAD_REQUEST);
@@ -151,8 +149,6 @@ const assignCompanyToDevice = async (req: RequestExtended) => {
 
 	for (const deviceId of deviceIds) {
 		const existingDevice = await deviceRepository.getDeviceById(deviceId);
-		console.log("🚀 ~ assignCompanyToDevice ~ existingDevice:", existingDevice)
-
 		if (!existingDevice) {
 			throw new ApiException(ErrorCodes.INVALID_DEVICE_ID);
 		}
