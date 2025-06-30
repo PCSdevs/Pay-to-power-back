@@ -71,21 +71,17 @@
 
 // client.on('message', async (topic: string, payload: Buffer) => {
 //     const rawPayload = payload.toString();
-//     console.log("🚀 ~ client.on ~ rawPayload:", rawPayload)
 //     let data: any;
 
 //     // Try parsing the message safely
 //     try {
 //         data = JSON.parse(rawPayload);
 //     } catch (err: any) {
-//         console.log("🚀 ~ client.on ~ err:", err)
 //         logger.warn(`⚠️ Skipping non-JSON message on topic ${topic}`);
 //         return;
 //     }
 
 //     if (data?.source === 'server') return;
-//     console.log("🚀 ~ client.on ~ parse data:", data)
-
 
 
 //     // Handle system topic: device connection
@@ -396,20 +392,16 @@ client.on('close', () => {
 
 client.on('message', async (topic: string, payload: Buffer) => {
     const rawPayload = payload.toString();
-    console.log("🚀 ~ client.on ~ rawPayload:", rawPayload);
     let data: any;
 
     try {
         data = JSON.parse(rawPayload);
     } catch (err: any) {
-        console.log("🚀 ~ client.on ~ err:", err);
         logger.warn(`⚠️ Skipping non-JSON message on topic ${topic}`);
         return;
     }
 
     if (data?.source === 'server') return;
-    console.log("🚀 ~ client.on ~ parse data:", data);
-
 
     const onlineMatch = topic.match(/^device\/([^/]+)\/online$/);
     if (onlineMatch) {
