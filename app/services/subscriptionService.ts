@@ -7,7 +7,11 @@ import { subscriptionRepository } from '../repositories/subscriptionRepository';
 import { publishMessage, publishMessageWithIST, storeMessage } from '../serverUtils';
 import ApiException from '../utils/errorHandler';
 import { ErrorCodes } from '../utils/response';
-
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const createSubscription = async (req: RequestExtended) => {
 
@@ -41,15 +45,15 @@ const createSubscription = async (req: RequestExtended) => {
         companyId: req?.user?.companyId
     });
 
-    const istMoment = moment.utc(dueTimestamp).tz("Asia/Kolkata");
-
+    const istFormattedDueTimestamp = dayjs.utc(newSubscription?.dueTimestamp).tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');
+    
     await subscriptionRepository.recordHistory({
         subscriptionId: newSubscription.id,
         deviceId: deviceId,
         mode,
         recurring,
         additionalTime: additionalTime,
-        dueTimestamp: istMoment.toDate(),
+        dueTimestamp: newSubscription.dueTimestamp,
         action: 'CREATED',
         changedById: req.user.id,
         companyId: req?.user?.companyId
@@ -64,19 +68,13 @@ const createSubscription = async (req: RequestExtended) => {
         mode,
         recurring,
         additionalTime: additionalTime?.toString(),
-        dueTimestamp: istMoment.toDate()?.toString(),
+        dueTimestamp: istFormattedDueTimestamp,
         source:'server'
     };
     
     storeMessage(device?.id, `device/${device?.generatedDeviceId}/subscription`, JSON.stringify(mqttPayload));
 
     await publishMessage(`device/${device?.generatedDeviceId}/online`, JSON.stringify({checkingConnection:"isDeviceOnline",source:'server'}));
-
-    // publishMessageWithIST(
-    //     `device/${deviceId}/subscription`,
-    //     mqtt_payload,
-    //     String(deviceId)
-    // );
 
     return {
         message: 'Subscription created successfully',
@@ -132,12 +130,13 @@ const updateSubscription = async (
 
     const deviceData= await deviceRepository.getDeviceById(deviceId)
 
+    const istFormattedDueTimestamp = dayjs.utc(final?.dueTimestamp).tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');
+
     storeMessage(deviceId, `device/${deviceData?.generatedDeviceId}/subscription`, JSON.stringify({
-        // deviceId: final?.deviceId,
         mode: final?.mode,
         recurring: final?.recurring,
         additionalTime: final?.additionalTime, 
-        dueTimestamp: moment.utc(final?.dueTimestamp).tz("Asia/Kolkata").toDate()?.toString(),
+        dueTimestamp: istFormattedDueTimestamp,
         status: 'Subscription updated.',
         code:200
     }));
