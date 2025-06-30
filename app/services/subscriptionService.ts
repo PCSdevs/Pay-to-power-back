@@ -64,7 +64,7 @@ const createSubscription = async (req: RequestExtended) => {
         mode,
         recurring,
         additionalTime: additionalTime?.toString(),
-        dueTimestamp: dueTimestamp?.toString(),
+        dueTimestamp: istMoment.toDate()?.toString(),
         source:'server'
     };
     
@@ -136,27 +136,14 @@ const updateSubscription = async (
         // deviceId: final?.deviceId,
         mode: final?.mode,
         recurring: final?.recurring,
-        additionalTime: final?.additionalTime,
-        dueTimestamp: final?.dueTimestamp?.toISOString?.(),
+        additionalTime: final?.additionalTime, 
+        dueTimestamp: moment.utc(final?.dueTimestamp).tz("Asia/Kolkata").toDate()?.toString(),
         status: 'Subscription updated.',
         code:200
     }));
 
 
     await publishMessage(`device/${deviceData?.generatedDeviceId}/online`, JSON.stringify({ checkingConnection: "isDeviceOnline",source:'server' }));
-
-    // await publishMessage(
-    //     `device/${deviceId}/subscription`,
-    //     JSON.stringify({
-    //         // deviceId: final?.deviceId,
-    //         mode: final?.mode,
-    //         recurring: final?.recurring,
-    //         additionalTime: final?.additionalTime,
-    //         dueTimestamp: final?.dueTimestamp?.toISOString?.(),
-    //         status: 'Subscription updated.',
-    //         code:200
-    //     })
-    // );
 
 
     return final;
