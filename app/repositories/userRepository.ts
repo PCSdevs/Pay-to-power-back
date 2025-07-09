@@ -231,10 +231,44 @@ const getUserById = async (id: string) => {
 			isDeleted: false,
 			// isActive: true,
 			// isVerified: true,
+		},
+		include:{
+			UserCompanyRole:{
+				include:{
+					role:true
+				}
+			}
 		}
 	});
 	return user;
 };
+
+const getUserByIdAndCompanyId = async (id: string, companyId: string) => {
+	const user = await prisma.user.findFirst({
+	  where: {
+		id,
+		isDeleted: false,
+		// UserCompanyRole: {
+		//   some: {
+		// 	companyId,
+		//   },
+		// },
+	  },
+	  include: {
+		UserCompanyRole: {
+		  where: {
+			companyId,
+		  },
+		  include: {
+			role: true,
+		  },
+		},
+	  },
+	});
+  
+	return user;
+  };
+  
 
 export const userRepository = {
 	getActiveUserById,
@@ -248,5 +282,6 @@ export const userRepository = {
 	checkUserById,
 	validateUserInCompany,
 	getUsersInRole,
-	getUserById
+	getUserById,
+	getUserByIdAndCompanyId
 };
