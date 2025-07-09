@@ -87,6 +87,19 @@ const assignCompanyToDevice = async (
   });
 };
 
+const validateAdminPassForDevice = async (
+  deviceId: string,
+  adminPassword: any
+) => {
+
+  return await prisma.device.findUnique({
+    where: { id: deviceId,
+      adminPassword:adminPassword
+     }
+
+  });
+};
+
 export const deviceRepository = {
   getDeviceByMac,
   createDevice,
@@ -95,5 +108,6 @@ export const deviceRepository = {
   getAllDevices,
   assignCompanyToDevice,
   getAllDevicesWithSubscriptions,
-  getDeviceByGeneratedDeviceId
+  getDeviceByGeneratedDeviceId,
+  validateAdminPassForDevice
 };

@@ -100,9 +100,17 @@ const updateSubscription = async (
 
     const existing = await subscriptionRepository.getByDeviceId(deviceId);
 
+    const deviceData= await deviceRepository.getDeviceById(deviceId)
+
+    if(deviceData?.isClientModeOn){
+        throw new ApiException(ErrorCodes.DEVICE_IN_CLIENT_MODE)
+    }
+
+
     if (!existing) {
         throw new Error('Subscription not found');
     }
+    
 
    const subscriptionData :any = await subscriptionRepository.updateByDeviceId(deviceId, {
         mode: updateData.mode,
@@ -128,7 +136,6 @@ const updateSubscription = async (
 
     const final = await subscriptionRepository.getByDeviceId(deviceId);
 
-    const deviceData= await deviceRepository.getDeviceById(deviceId)
 
     const istFormattedDueTimestamp = dayjs.utc(final?.dueTimestamp).tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');
 

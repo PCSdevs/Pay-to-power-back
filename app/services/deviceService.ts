@@ -5,6 +5,8 @@ import { publishMessage, storeMessage } from '../serverUtils';
 import ApiException from '../utils/errorHandler';
 import { ErrorCodes } from '../utils/response';
 import { checkPermission } from '../middlewares/isAuthorizedUser';
+import { userRepository } from '../repositories/userRepository';
+import { comparePassword } from '../helpers/passwordHelper';
 
 
 const registerDevice = async (req: RequestExtended) => {
@@ -115,9 +117,25 @@ const getAllDevices = async (req: RequestExtended) => {
 
 	const currentTime = moment().tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');
 
+	// const sanitizedDevices = devices.map((device) => {
+	// 	return {
+	// 		...device,
+	// 		current_time: currentTime,
+	// 	};
+	// });
 	const sanitizedDevices = devices.map((device) => {
+		const {
+			hotspotId,
+			hotspotPassword,
+			clientId,
+			clientPassword,
+			adminId,
+			adminPassword,
+			...rest
+		} = device;
+
 		return {
-			...device,
+			...rest,
 			current_time: currentTime,
 		};
 	});
@@ -183,7 +201,7 @@ const addClientModeToDevice = async (req: RequestExtended) => {
 		apPass: deviceData.hotspotPassword,
 		clientId: deviceData.clientId,
 		clientPass: deviceData.clientPassword,
-		adminId: deviceData.hotspotId,
+		adminId: deviceData.adminId,
 		adminPass: deviceData.adminPassword,
 		status: 'Device clientMode ON successfully.',
 		code: 200,
@@ -199,10 +217,61 @@ const addClientModeToDevice = async (req: RequestExtended) => {
 		message: 'Devices updated successfully',
 	};
 };
+
+const validateAdminPassForDevice = async (req: RequestExtended) => {
+	const { user } = req
+
+	const { deviceId, adminPassword } = req?.body
+
+	await checkPermission(user.id, user.companyId, {
+		moduleName: 'Device',
+		permission: ['view'],
+	});
+
+	const userData = await userRepository.getUserByIdAndCompanyId(user?.id, user?.companyId)
+	console.log("🚀 ~ validateAdminPassForDevice ~ userData:", userData)
+
+
+	if (!userData) {
+		throw new ApiException(ErrorCodes.USER_NOT_FOUND)
+	}
+
+	if (!(user?.isAdmin || user?.isSuperAdmin)) {
+		throw new ApiException(ErrorCodes?.MISSING_PERMISSION)
+	}
+
+
+	const isPasswordValid = await comparePassword(
+		adminPassword,
+		userData.password as string
+	);
+
+	if (!isPasswordValid) {
+		throw new ApiException(ErrorCodes.INVALID_CREDENTIALS);
+	}
+
+
+	const deviceData = await deviceRepository.getDeviceById(deviceId)
+
+	if (!deviceData) {
+		throw new ApiException(ErrorCodes?.DEVICE_NOT_FOUND)
+	}
+
+	// if (adminPassword !== deviceData?.adminPassword) {
+	// 	throw new ApiException(ErrorCodes?.DEVICE_ADMIN_PASSWORD_NOT_MATCH)
+	// }
+
+
+	return {
+		data: deviceData,
+		message: 'Devices fetched successfully',
+	};
+};
 export const deviceService = {
 	registerDevice,
 	updateDevice,
 	getAllDevices,
 	assignCompanyToDevice,
-	addClientModeToDevice
+	addClientModeToDevice,
+	validateAdminPassForDevice
 };

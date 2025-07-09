@@ -4,7 +4,7 @@ import { isAuthenticated } from '../middlewares/authMiddleware';
 // import { deviceService } from '../services/deviceService';
 import { RequestExtended } from '../interfaces/global';
 import { deviceService } from '../services/deviceService';
-import { assignCompanyToDevicesValidationRules, hotspotDeviceValidationRules } from '../helpers/validators';
+import { assignCompanyToDevicesValidationRules, hotspotDeviceValidationRules, validateAdminPassForDeviceRules } from '../helpers/validators';
 
 const router = express.Router();
 
@@ -54,6 +54,26 @@ router.post(
   hotspotDeviceValidationRules,
   asyncHandler(async (req: RequestExtended, res) => {
     const result = await deviceService.addClientModeToDevice(req);
+    res.json(result);
+  })
+);
+
+router.post(
+  '/client-mode',
+  isAuthenticated,
+  hotspotDeviceValidationRules,
+  asyncHandler(async (req: RequestExtended, res) => {
+    const result = await deviceService.addClientModeToDevice(req);
+    res.json(result);
+  })
+);
+
+router.post(
+  '/validate-admin-pass',
+  isAuthenticated,
+  validateAdminPassForDeviceRules,
+  asyncHandler(async (req: RequestExtended, res) => {
+    const result = await deviceService.validateAdminPassForDevice(req);
     res.json(result);
   })
 );

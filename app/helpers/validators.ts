@@ -187,3 +187,15 @@ export const hotspotDeviceValidationRules = [
     .notEmpty()
     .withMessage('adminPassword is required'),
 ];
+
+export const validateAdminPassForDeviceRules = [
+	body('deviceId')
+	  .isString()
+	  .notEmpty()
+	  .withMessage('deviceId is required'),
+  
+	body('adminPassword')
+	  .isString()
+	  .notEmpty()
+	  .withMessage('adminPassword is required'),
+  ];

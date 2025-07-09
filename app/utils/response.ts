@@ -191,6 +191,17 @@ export const ErrorCodes = {
     code: 1603,
     message: "Device with macAddress is already registered..",
   },
+  DEVICE_ADMIN_PASSWORD_NOT_MATCH: {
+    status: 400,
+    code: 1604,
+    message: "Device admin password does not match.",
+  },
+  DEVICE_IN_CLIENT_MODE: {
+    status: 400,
+    code: 1205,
+    message: "Device is in client mode. Subscription update not allowed.",
+  },
+  
   CUSTOM_ERROR: (status: number, code: number, message: string) => ({
     status,
     code,
