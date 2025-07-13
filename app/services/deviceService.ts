@@ -287,7 +287,7 @@ const changeWifiForDevice = async (req: RequestExtended) => {
 		source: 'server'
 	};
 
-	await publishMessage(`wifi`, JSON.stringify(mqttPayload));
+	await publishMessage(`device/${deviceData?.generatedDeviceId}/wifi`, JSON.stringify(mqttPayload));
 
 	return {
 		data: deviceData,
