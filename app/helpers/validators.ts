@@ -199,3 +199,21 @@ export const validateAdminPassForDeviceRules = [
 	  .notEmpty()
 	  .withMessage('adminPassword is required'),
   ];
+
+
+  export const changeWifiForDeviceRules = [
+	body('deviceId')
+	  .isString()
+	  .notEmpty()
+	  .withMessage('deviceId is required'),
+  
+	body('wifiSsid')
+	  .isString()
+	  .notEmpty()
+	  .withMessage('wifi ssid is required'),
+	
+	body('wifiPassword')
+	  .isString()
+	  .notEmpty()
+	  .withMessage('wifi password is required'),
+  ];

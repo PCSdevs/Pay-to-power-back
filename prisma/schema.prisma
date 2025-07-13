@@ -174,10 +174,10 @@ enum InvitationStatus {
 model Device {
   id                  String                @id @default(uuid())
   macAddress          String                @unique
-  boardNumber         String                
+  boardNumber         String
   generatedDeviceId   String                @unique
   name                String?
-  secreteKey          String 
+  secreteKey          String
   isClientModeOn      Boolean               @default(false)
   hotspotId           String?
   hotspotPassword     String?
@@ -185,6 +185,8 @@ model Device {
   clientPassword      String?
   adminId             String?
   adminPassword       String?
+  wifiSsid            String?             // check
+  wifiPassword        String?           // this is the new password set for new hotspot.
   lastUpdated         DateTime              @updatedAt
   createdAt           DateTime              @default(now())
   subscriptions       Subscription[]

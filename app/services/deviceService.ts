@@ -229,8 +229,6 @@ const validateAdminPassForDevice = async (req: RequestExtended) => {
 	});
 
 	const userData = await userRepository.getUserByIdAndCompanyId(user?.id, user?.companyId)
-	console.log("🚀 ~ validateAdminPassForDevice ~ userData:", userData)
-
 
 	if (!userData) {
 		throw new ApiException(ErrorCodes.USER_NOT_FOUND)
@@ -257,21 +255,52 @@ const validateAdminPassForDevice = async (req: RequestExtended) => {
 		throw new ApiException(ErrorCodes?.DEVICE_NOT_FOUND)
 	}
 
-	// if (adminPassword !== deviceData?.adminPassword) {
-	// 	throw new ApiException(ErrorCodes?.DEVICE_ADMIN_PASSWORD_NOT_MATCH)
-	// }
-
 
 	return {
 		data: deviceData,
-		message: 'Devices fetched successfully',
+		message: 'Password validated successfully',
 	};
 };
+
+const changeWifiForDevice = async (req: RequestExtended) => {
+	const { user } = req
+	const { deviceId, wifiSsid, wifiPassword } = req.body
+
+	await checkPermission(user.id, user.companyId, {
+		moduleName: 'Device',
+		permission: ['edit'],
+	});
+
+	const existingDevice = await deviceRepository.getDeviceById(deviceId);
+	if (!existingDevice) {
+		throw new ApiException(ErrorCodes.INVALID_DEVICE_ID);
+	}
+
+	const deviceData = await deviceRepository.updateDevice(deviceId, { wifiSsid, wifiPassword })
+	//NOTE - update the naming of this (hotspotName and hotspotNamePass)  and the store message
+
+	const mqttPayload = {
+		wifi_ssid: deviceData?.wifiSsid,
+		wifi_password: deviceData?.wifiPassword,
+		status: 'Device hotspot changed successfully.',
+		code: 200,
+		source: 'server'
+	};
+
+	await publishMessage(`wifi`, JSON.stringify(mqttPayload));
+
+	return {
+		data: deviceData,
+		message: 'Devices updated successfully',
+	};
+}
+
 export const deviceService = {
 	registerDevice,
 	updateDevice,
 	getAllDevices,
 	assignCompanyToDevice,
 	addClientModeToDevice,
-	validateAdminPassForDevice
+	validateAdminPassForDevice,
+	changeWifiForDevice
 };
