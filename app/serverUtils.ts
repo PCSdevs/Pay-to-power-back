@@ -138,8 +138,8 @@ client.on('message', async (topic: string, payload: Buffer) => {
         const { topic, secreteKey } = data;
 
         if (
-            typeof topic !== 'string' || topic.trim() === '' 
-          ) {
+            typeof topic !== 'string' || topic.trim() === ''
+        ) {
             const mqttPayload = {
                 code: 401,
                 status: 'topic is required.',
@@ -149,7 +149,7 @@ client.on('message', async (topic: string, payload: Buffer) => {
             const responseTopic = `device/error`;
             await publishMessage(responseTopic, JSON.stringify(mqttPayload));
             return;
-          }
+        }
 
         const deviceData = await deviceRepository?.getDeviceByGeneratedDeviceId(deviceId);
 
@@ -238,7 +238,7 @@ client.on('message', async (topic: string, payload: Buffer) => {
         if (
             typeof macAddress !== 'string' || macAddress.trim() === '' ||
             typeof boardNumber !== 'string' || boardNumber.trim() === ''
-          ) {
+        ) {
             const mqttPayload = {
                 code: 401,
                 status: 'macAddress and boardNumber both required.',
@@ -248,7 +248,7 @@ client.on('message', async (topic: string, payload: Buffer) => {
             const responseTopic = `device/error`;
             await publishMessage(responseTopic, JSON.stringify(mqttPayload));
             return;
-          }
+        }
 
 
         const newDevice = await deviceRepository.createDevice({

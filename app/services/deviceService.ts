@@ -286,8 +286,9 @@ const changeWifiForDevice = async (req: RequestExtended) => {
 		code: 200,
 		source: 'server'
 	};
+	storeMessage(deviceId, `device/${deviceData.generatedDeviceId}/wifi`, JSON.stringify(mqttPayload))
 
-	await publishMessage(`device/${deviceData?.generatedDeviceId}/wifi`, JSON.stringify(mqttPayload));
+	await publishMessage(`device/${deviceData?.generatedDeviceId}/online`, JSON.stringify({ checkingConnection: "isDeviceOnline", source: 'server' }));
 
 	return {
 		data: deviceData,
