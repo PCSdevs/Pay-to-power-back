@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon dist/index.js",
-    "dev": "nodemon --exec ts-node app/index.ts",
+    "dev": "tsx watch app/index.ts",
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint .",
@@ -36,6 +36,7 @@
     "prettier": "^3.5.3",
     "prisma": "^5.13.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^7.8.0"
   },
